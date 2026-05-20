@@ -46,12 +46,7 @@ function makeChartId(title = "") {
     .replace(/^_|_$/g, "");
 }
 
-function getPercent(value, total) {
-  if (!total) return "0%";
-  return `${((Number(value || 0) / total) * 100).toFixed(1)}%`;
-}
-
-function CustomTooltip({ active, payload, label, chartTitle, total }) {
+function CustomTooltip({ active, payload, label, chartTitle }) {
   if (!active || !payload?.length) return null;
 
   const item = payload[0];
@@ -60,28 +55,19 @@ function CustomTooltip({ active, payload, label, chartTitle, total }) {
   const value = Number(row.value ?? item?.value ?? 0);
 
   return (
-    <div className="min-w-[240px] rounded-2xl border border-slate-200 bg-white p-4 shadow-soft">
+    <div className="min-w-[220px] rounded-2xl border border-slate-200 bg-white p-4 shadow-soft">
       <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
         {chartTitle}
       </p>
 
       <p className="mt-2 text-sm font-black text-slate-900">{name}</p>
 
-      <div className="mt-3 grid grid-cols-2 gap-3">
+      <div className="mt-3">
         <div className="rounded-xl bg-slate-50 p-3">
           <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
             Count
           </p>
           <p className="mt-1 text-2xl font-black text-slate-900">{value}</p>
-        </div>
-
-        <div className="rounded-xl bg-slate-50 p-3">
-          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
-            Share
-          </p>
-          <p className="mt-1 text-2xl font-black text-slate-900">
-            {getPercent(value, total)}
-          </p>
         </div>
       </div>
 
@@ -172,7 +158,7 @@ export default function ChartPanel({ title, data = [], type = "bar", chartId }) 
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 no-print no-export">
           <select
             value={selectedType}
             onChange={(event) => updateChartType(event.target.value)}
@@ -227,9 +213,7 @@ export default function ChartPanel({ title, data = [], type = "bar", chartId }) 
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip
-                  content={<CustomTooltip chartTitle={title} total={total} />}
-                />
+                <Tooltip content={<CustomTooltip chartTitle={title} />} />
                 <Line
                   type="monotone"
                   dataKey="value"
@@ -244,9 +228,7 @@ export default function ChartPanel({ title, data = [], type = "bar", chartId }) 
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip
-                  content={<CustomTooltip chartTitle={title} total={total} />}
-                />
+                <Tooltip content={<CustomTooltip chartTitle={title} />} />
                 <Area
                   type="monotone"
                   dataKey="value"
@@ -257,9 +239,7 @@ export default function ChartPanel({ title, data = [], type = "bar", chartId }) 
               </AreaChart>
             ) : selectedType === "pie" || selectedType === "donut" ? (
               <PieChart>
-                <Tooltip
-                  content={<CustomTooltip chartTitle={title} total={total} />}
-                />
+                <Tooltip content={<CustomTooltip chartTitle={title} />} />
                 <Pie
                   data={safeData}
                   dataKey="value"
@@ -284,24 +264,21 @@ export default function ChartPanel({ title, data = [], type = "bar", chartId }) 
                 startAngle={90}
                 endAngle={-270}
               >
-                <Tooltip
-                  content={<CustomTooltip chartTitle={title} total={total} />}
+                <Tooltip content={<CustomTooltip chartTitle={title} />} />
+                <Legend
+                  iconSize={10}
+                  layout="vertical"
+                  verticalAlign="middle"
+                  align="right"
                 />
-                <Legend iconSize={10} layout="vertical" verticalAlign="middle" align="right" />
-                <RadialBar
-                  dataKey="value"
-                  background
-                  cornerRadius={12}
-                />
+                <RadialBar dataKey="value" background cornerRadius={12} />
               </RadialBarChart>
             ) : selectedType === "composed" ? (
               <ComposedChart data={safeData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip
-                  content={<CustomTooltip chartTitle={title} total={total} />}
-                />
+                <Tooltip content={<CustomTooltip chartTitle={title} />} />
                 <Bar dataKey="value" fill={primary} radius={[8, 8, 0, 0]} />
                 <Line
                   type="monotone"
@@ -324,9 +301,7 @@ export default function ChartPanel({ title, data = [], type = "bar", chartId }) 
                   tick={{ fontSize: 11 }}
                   width={130}
                 />
-                <Tooltip
-                  content={<CustomTooltip chartTitle={title} total={total} />}
-                />
+                <Tooltip content={<CustomTooltip chartTitle={title} />} />
                 <Bar dataKey="value" radius={[0, 8, 8, 0]}>
                   {safeData.map((entry, index) => (
                     <Cell
@@ -341,9 +316,7 @@ export default function ChartPanel({ title, data = [], type = "bar", chartId }) 
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip
-                  content={<CustomTooltip chartTitle={title} total={total} />}
-                />
+                <Tooltip content={<CustomTooltip chartTitle={title} />} />
                 <Bar dataKey="value" radius={[8, 8, 0, 0]}>
                   {safeData.map((entry, index) => (
                     <Cell
