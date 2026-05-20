@@ -23,6 +23,25 @@ export const DEFAULT_CHART_COLORS = [
   "#f59e0b",
 ];
 
+export const DEFAULT_CHART_SETTINGS = {
+  productChart: "bar",
+  categoryChart: "bar",
+  monthlyChart: "area",
+  stockChart: "bar",
+
+  ticketDailyChart: "line",
+  ticketMonthlyChart: "area",
+  ticketSupportChart: "composed",
+  ticketProductCategoryChart: "bar",
+  ticketProcedureChart: "radial",
+  ticketTopProductsChart: "composed",
+
+  reportDateTrendChart: "line",
+  reportSupportChart: "area",
+  reportProductCategoryChart: "bar",
+  reportProcedureChart: "bar",
+};
+
 export function saveMainData(rows) {
   localStorage.setItem(DATA_KEY, JSON.stringify(rows || []));
 }
@@ -147,34 +166,23 @@ export function applyTheme(theme) {
 }
 
 export function saveChartSettings(settings) {
-  localStorage.setItem(CHART_KEY, JSON.stringify(settings));
+  localStorage.setItem(
+    CHART_KEY,
+    JSON.stringify({
+      ...DEFAULT_CHART_SETTINGS,
+      ...(settings || {}),
+    })
+  );
 }
 
 export function getChartSettings() {
   try {
-    return (
-      JSON.parse(localStorage.getItem(CHART_KEY)) || {
-        productChart: "bar",
-        categoryChart: "bar",
-        monthlyChart: "line",
-        stockChart: "bar",
-        ticketDailyChart: "line",
-        ticketSupportChart: "bar",
-        ticketProductCategoryChart: "bar",
-        ticketProcedureChart: "bar",
-      }
-    );
-  } catch {
     return {
-      productChart: "bar",
-      categoryChart: "bar",
-      monthlyChart: "line",
-      stockChart: "bar",
-      ticketDailyChart: "line",
-      ticketSupportChart: "bar",
-      ticketProductCategoryChart: "bar",
-      ticketProcedureChart: "bar",
+      ...DEFAULT_CHART_SETTINGS,
+      ...(JSON.parse(localStorage.getItem(CHART_KEY) || "{}") || {}),
     };
+  } catch {
+    return DEFAULT_CHART_SETTINGS;
   }
 }
 
@@ -224,6 +232,11 @@ export function saveChartTypeOverride(chartId, chartType) {
   }
 
   saveChartTypeOverrides(overrides);
+}
+
+export function resetChartTypeOverrides() {
+  localStorage.removeItem(CHART_TYPE_OVERRIDES_KEY);
+  localStorage.setItem(CHART_KEY, JSON.stringify(DEFAULT_CHART_SETTINGS));
 }
 
 export function clearAllData() {

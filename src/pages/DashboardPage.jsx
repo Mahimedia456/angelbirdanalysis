@@ -9,6 +9,7 @@ import TicketReportTable from "../components/tickets/TicketReportTable";
 import PivotTable from "../components/dashboard/PivotTable";
 import ChartPanel from "../components/dashboard/ChartPanel";
 import SummaryTable from "../components/dashboard/SummaryTable";
+import ExportActions from "../components/export/ExportActions";
 import {
   getChartSettings,
   getProductsData,
@@ -83,9 +84,8 @@ export default function DashboardPage() {
             </h1>
 
             <p className="mt-5 max-w-2xl text-sm leading-6 text-white/65">
-              Separate reporting for support tickets and product master data.
-              Analyze date trends, support category, product category,
-              procedure, product names and SKU records.
+              Interactive dashboard with filters, charts, KPIs, pivots, print
+              and PDF export.
             </p>
           </div>
 
@@ -108,9 +108,10 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <div className="angel-card p-2">
+      <div className="no-print no-export flex flex-col gap-4 rounded-[28px] border border-slate-200 bg-white p-4 shadow-soft xl:flex-row xl:items-center xl:justify-between">
         <div className="flex flex-wrap gap-2">
           <button
+            type="button"
             onClick={() => setMode("tickets")}
             className={[
               "rounded-2xl px-5 py-3 text-sm font-black transition",
@@ -123,6 +124,7 @@ export default function DashboardPage() {
           </button>
 
           <button
+            type="button"
             onClick={() => setMode("products")}
             className={[
               "rounded-2xl px-5 py-3 text-sm font-black transition",
@@ -134,80 +136,118 @@ export default function DashboardPage() {
             Product Master Analytics
           </button>
         </div>
+
+        <ExportActions
+          targetId="dashboard-export-area"
+          title={`Angelbird Dashboard ${mode}`}
+        />
       </div>
 
-      {mode === "tickets" ? (
-        <>
-          <TicketFilters
-            tickets={ticketRows}
-            filters={ticketFilters}
-            onChange={setTicketFilters}
-          />
+      <div
+        id="dashboard-export-area"
+        className="space-y-8 rounded-[28px] bg-white p-1"
+      >
+        {mode === "tickets" ? (
+          <>
+            <div className="no-print no-export">
+              <TicketFilters
+                tickets={ticketRows}
+                filters={ticketFilters}
+                onChange={setTicketFilters}
+              />
+            </div>
 
-          <TicketKpiCards analytics={ticketAnalytics} />
+            <section className="angel-section p-6">
+              <p className="angel-mini-label">Dashboard Export</p>
+              <h2 className="mt-2 angel-page-title">
+                Ticket Analytics Dashboard
+              </h2>
+              <p className="mt-2 text-sm text-slate-500">
+                Filtered tickets: {filteredTickets.length} from{" "}
+                {ticketRows.length} total records.
+              </p>
+            </section>
 
-          <TicketAnalyticsPanel
-            analytics={ticketAnalytics}
-            chartSettings={chartSettings}
-          />
+            <TicketKpiCards analytics={ticketAnalytics} />
 
-          <TicketReportTable
-            title="Filtered Ticket Analytics Table"
-            tickets={filteredTickets}
-          />
-
-          <PivotTable
-            rows={filteredTickets}
-            title="Ticket Analytics Pivot Table"
-          />
-        </>
-      ) : (
-        <>
-          <ProductFilters
-            products={productRows}
-            filters={productFilters}
-            onChange={setProductFilters}
-          />
-
-          <ProductCategoryCards
-            categorySummary={productAnalytics.categorySummary}
-          />
-
-          <section className="grid gap-6 xl:grid-cols-2">
-            <ChartPanel
-              title="Product Category Count"
-              data={productAnalytics.categorySummary}
-              type={chartSettings.categoryChart}
+            <TicketAnalyticsPanel
+              analytics={ticketAnalytics}
+              chartSettings={chartSettings}
             />
 
-            <ChartPanel
-              title="SKU Records"
-              data={productAnalytics.skuSummary}
-              type={chartSettings.productChart}
+            <TicketReportTable
+              title="Filtered Ticket Analytics Table"
+              tickets={filteredTickets}
             />
 
-            <SummaryTable
-              title="Category Count Summary"
-              data={productAnalytics.categorySummary}
+            <PivotTable
+              rows={filteredTickets}
+              title="Ticket Analytics Pivot Table"
+            />
+          </>
+        ) : (
+          <>
+            <div className="no-print no-export">
+              <ProductFilters
+                products={productRows}
+                filters={productFilters}
+                onChange={setProductFilters}
+              />
+            </div>
+
+            <section className="angel-section p-6">
+              <p className="angel-mini-label">Dashboard Export</p>
+              <h2 className="mt-2 angel-page-title">
+                Product Master Dashboard
+              </h2>
+              <p className="mt-2 text-sm text-slate-500">
+                Filtered products: {filteredProducts.length} from{" "}
+                {productRows.length} total records.
+              </p>
+            </section>
+
+            <ProductCategoryCards
+              categorySummary={productAnalytics.categorySummary}
             />
 
-            <SummaryTable
-              title="Duplicate SKU Summary"
-              data={productAnalytics.duplicateSkus}
+            <section className="grid gap-6 xl:grid-cols-2">
+              <ChartPanel
+                chartId="dashboard_product_category_count"
+                title="Product Category Count"
+                data={productAnalytics.categorySummary}
+                type={chartSettings.categoryChart || "bar"}
+              />
+
+              <ChartPanel
+                chartId="dashboard_sku_records"
+                title="SKU Records"
+                data={productAnalytics.skuSummary}
+                type={chartSettings.productChart || "bar"}
+              />
+
+              <SummaryTable
+                title="Category Count Summary"
+                data={productAnalytics.categorySummary}
+              />
+
+              <SummaryTable
+                title="Duplicate SKU Summary"
+                data={productAnalytics.duplicateSkus}
+              />
+            </section>
+
+            <ProductReportTable
+              title="Filtered Product Master Table"
+              products={filteredProducts}
             />
-          </section>
 
-          <ProductReportTable
-            title="Filtered Product Master Table"
-            products={filteredProducts}
-          />
-
-          <PivotTable
-            rows={filteredProducts}
-            title="Product Master Pivot Table"
-          />
-        </>
-      )}
+            <PivotTable
+              rows={filteredProducts}
+              title="Product Master Pivot Table"
+            />
+          </>
+        )}
+      </div>
     </div>
   );
 }

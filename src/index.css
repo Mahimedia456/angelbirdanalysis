@@ -128,3 +128,136 @@ textarea {
     break-inside: avoid;
   }
 }
+
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+  }
+
+  header,
+  aside,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+
+  .angel-container {
+    max-width: none !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+
+  main {
+    width: 100% !important;
+  }
+
+  #export-area {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .angel-card,
+  .angel-section {
+    box-shadow: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .recharts-wrapper,
+  .recharts-surface {
+    overflow: visible !important;
+  }
+
+  table {
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+}
+
+.pdf-exporting {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  overflow: visible !important;
+  height: auto !important;
+  max-height: none !important;
+}
+
+.pdf-exporting * {
+  overflow: visible !important;
+}
+
+.pdf-exporting .recharts-wrapper,
+.pdf-exporting .recharts-responsive-container,
+.pdf-exporting svg {
+  overflow: visible !important;
+}
+
+@media print {
+  body {
+    background: #ffffff !important;
+  }
+
+  .no-print,
+  .pdf-hide {
+    display: none !important;
+  }
+
+  #angelbird-report-export {
+    box-shadow: none !important;
+    border: none !important;
+    ring: none !important;
+    padding: 0 !important;
+  }
+
+  .angel-page-break {
+    break-before: page;
+    page-break-before: always;
+  }
+}
+
+.pdf-exporting {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  overflow: visible !important;
+  height: auto !important;
+  max-height: none !important;
+}
+
+.pdf-exporting * {
+  overflow: visible !important;
+}
+
+.pdf-exporting .recharts-wrapper,
+.pdf-exporting .recharts-responsive-container,
+.pdf-exporting .recharts-surface,
+.pdf-exporting svg {
+  overflow: visible !important;
+}
+
+@media print {
+  body {
+    background: #ffffff !important;
+  }
+
+  .no-print,
+  .no-export,
+  .pdf-hide {
+    display: none !important;
+  }
+
+  #dashboard-export-area,
+  #reports-export-area {
+    background: #ffffff !important;
+    box-shadow: none !important;
+  }
+}
