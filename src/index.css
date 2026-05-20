@@ -1,0 +1,130 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --header-color: #2f3d46;
+  --footer-color: #2f3d46;
+  --accent-color: #d7ff00;
+  --kpi-color: #f4f6f6;
+  --chart-color: #2f3d46;
+  --text-color: #2f3d46;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: #ffffff;
+  color: var(--text-color);
+  font-family: Inter, Arial, sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+::selection {
+  background: var(--accent-color);
+  color: #111827;
+}
+
+.angel-container {
+  @apply mx-auto w-full max-w-[1520px] px-4 sm:px-6 lg:px-8;
+}
+
+.angel-card {
+  @apply rounded-[28px] border border-slate-200 bg-white shadow-soft;
+}
+
+.angel-section {
+  @apply rounded-[34px] border border-slate-200 bg-white shadow-soft;
+}
+
+.angel-soft-card {
+  @apply rounded-[28px] border border-slate-200 bg-[#f6f8f8];
+}
+
+.angel-input {
+  @apply w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-500;
+}
+
+.angel-label {
+  @apply mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-500;
+}
+
+.angel-btn {
+  @apply inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-black transition;
+}
+
+.angel-btn-dark {
+  background: var(--header-color);
+  color: white;
+}
+
+.angel-btn-dark:hover {
+  filter: brightness(0.95);
+}
+
+.angel-btn-lime {
+  background: var(--accent-color);
+  color: var(--text-color);
+}
+
+.angel-btn-lime:hover {
+  filter: brightness(0.96);
+}
+
+.angel-mini-label {
+  @apply text-[11px] font-black uppercase tracking-[0.24em] text-slate-500;
+}
+
+.angel-title {
+  @apply text-3xl font-black tracking-[-0.04em] text-slate-900 md:text-5xl;
+}
+
+.angel-page-title {
+  @apply text-3xl font-black tracking-[-0.04em] text-slate-900 md:text-4xl;
+}
+
+.angel-muted {
+  @apply text-sm leading-6 text-slate-500;
+}
+
+.angel-grid-bg {
+  background-image:
+    linear-gradient(rgba(47, 61, 70, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(47, 61, 70, 0.06) 1px, transparent 1px);
+  background-size: 42px 42px;
+}
+
+@media print {
+  header,
+  aside,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  main {
+    width: 100% !important;
+  }
+
+  .angel-card,
+  .angel-section {
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+}
