@@ -1,15 +1,9 @@
 import ChartPanel from "../dashboard/ChartPanel";
 import SummaryTable from "../dashboard/SummaryTable";
-import ComparisonCards from "../dashboard/ComparisonCards";
 
 export default function TicketAnalyticsPanel({ analytics, chartSettings }) {
   return (
     <div className="space-y-8">
-      <ComparisonCards
-        title="Current Period vs Previous Period"
-        items={analytics.comparison?.items || []}
-      />
-
       <section className="space-y-5">
         <div>
           <p className="angel-mini-label">Ticket Charts</p>
