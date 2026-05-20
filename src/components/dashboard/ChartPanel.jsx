@@ -6,10 +6,14 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  ComposedChart,
+  Legend,
   Line,
   LineChart,
   Pie,
   PieChart,
+  RadialBar,
+  RadialBarChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -23,7 +27,16 @@ import {
   saveChartTypeOverride,
 } from "../../utils/storage";
 
-const CHART_TYPES = ["bar", "line", "area", "pie", "donut"];
+const CHART_TYPES = [
+  { value: "bar", label: "BAR" },
+  { value: "horizontal_bar", label: "HORIZONTAL BAR" },
+  { value: "line", label: "LINE" },
+  { value: "area", label: "AREA" },
+  { value: "pie", label: "PIE" },
+  { value: "donut", label: "DONUT" },
+  { value: "radial", label: "RADIAL" },
+  { value: "composed", label: "COMPOSED" },
+];
 
 function makeChartId(title = "") {
   return String(title)
@@ -72,20 +85,8 @@ function CustomTooltip({ active, payload, label, chartTitle, total }) {
         </div>
       </div>
 
-      {row.product_name ? (
-        <p className="mt-3 text-xs text-slate-500">
-          <strong>Product:</strong> {row.product_name}
-        </p>
-      ) : null}
-
-      {row.category ? (
-        <p className="mt-2 text-xs text-slate-500">
-          <strong>Category:</strong> {row.category}
-        </p>
-      ) : null}
-
       {row.previous !== undefined ? (
-        <p className="mt-2 text-xs text-slate-500">
+        <p className="mt-3 text-xs text-slate-500">
           <strong>Previous:</strong> {row.previous}
         </p>
       ) : null}
@@ -93,6 +94,18 @@ function CustomTooltip({ active, payload, label, chartTitle, total }) {
       {row.changePercent !== undefined ? (
         <p className="mt-2 text-xs text-slate-500">
           <strong>Change:</strong> {Number(row.changePercent).toFixed(1)}%
+        </p>
+      ) : null}
+
+      {row.product_name ? (
+        <p className="mt-2 text-xs text-slate-500">
+          <strong>Product:</strong> {row.product_name}
+        </p>
+      ) : null}
+
+      {row.category ? (
+        <p className="mt-2 text-xs text-slate-500">
+          <strong>Category:</strong> {row.category}
         </p>
       ) : null}
     </div>
@@ -111,6 +124,15 @@ export default function ChartPanel({ title, data = [], type = "bar", chartId }) 
   const total = useMemo(
     () => safeData.reduce((sum, item) => sum + Number(item.value || 0), 0),
     [safeData]
+  );
+
+  const radialData = useMemo(
+    () =>
+      safeData.map((item, index) => ({
+        ...item,
+        fill: colors[index % colors.length] || colors[0],
+      })),
+    [safeData, colors]
   );
 
   function updateChartType(value) {
@@ -158,8 +180,8 @@ export default function ChartPanel({ title, data = [], type = "bar", chartId }) 
             title="Change chart type"
           >
             {CHART_TYPES.map((chartType) => (
-              <option key={chartType} value={chartType}>
-                {chartType.toUpperCase()}
+              <option key={chartType.value} value={chartType.value}>
+                {chartType.label}
               </option>
             ))}
           </select>
@@ -193,7 +215,7 @@ export default function ChartPanel({ title, data = [], type = "bar", chartId }) 
         </div>
       </div>
 
-      <div className="h-[320px]">
+      <div className="h-[340px]">
         {!safeData.length ? (
           <div className="flex h-full items-center justify-center rounded-2xl bg-slate-50 text-sm text-slate-500">
             Upload CSV data to generate this chart.
@@ -206,9 +228,7 @@ export default function ChartPanel({ title, data = [], type = "bar", chartId }) 
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip
-                  content={
-                    <CustomTooltip chartTitle={title} total={total} />
-                  }
+                  content={<CustomTooltip chartTitle={title} total={total} />}
                 />
                 <Line
                   type="monotone"
@@ -225,9 +245,7 @@ export default function ChartPanel({ title, data = [], type = "bar", chartId }) 
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip
-                  content={
-                    <CustomTooltip chartTitle={title} total={total} />
-                  }
+                  content={<CustomTooltip chartTitle={title} total={total} />}
                 />
                 <Area
                   type="monotone"
@@ -240,9 +258,7 @@ export default function ChartPanel({ title, data = [], type = "bar", chartId }) 
             ) : selectedType === "pie" || selectedType === "donut" ? (
               <PieChart>
                 <Tooltip
-                  content={
-                    <CustomTooltip chartTitle={title} total={total} />
-                  }
+                  content={<CustomTooltip chartTitle={title} total={total} />}
                 />
                 <Pie
                   data={safeData}
@@ -260,15 +276,73 @@ export default function ChartPanel({ title, data = [], type = "bar", chartId }) 
                   ))}
                 </Pie>
               </PieChart>
+            ) : selectedType === "radial" ? (
+              <RadialBarChart
+                data={radialData}
+                innerRadius="15%"
+                outerRadius="95%"
+                startAngle={90}
+                endAngle={-270}
+              >
+                <Tooltip
+                  content={<CustomTooltip chartTitle={title} total={total} />}
+                />
+                <Legend iconSize={10} layout="vertical" verticalAlign="middle" align="right" />
+                <RadialBar
+                  dataKey="value"
+                  background
+                  cornerRadius={12}
+                />
+              </RadialBarChart>
+            ) : selectedType === "composed" ? (
+              <ComposedChart data={safeData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip
+                  content={<CustomTooltip chartTitle={title} total={total} />}
+                />
+                <Bar dataKey="value" fill={primary} radius={[8, 8, 0, 0]} />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke={colors[1] || "#d7ff00"}
+                  strokeWidth={3}
+                />
+              </ComposedChart>
+            ) : selectedType === "horizontal_bar" ? (
+              <BarChart
+                data={safeData}
+                layout="vertical"
+                margin={{ left: 50, right: 20 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" tick={{ fontSize: 11 }} />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  tick={{ fontSize: 11 }}
+                  width={130}
+                />
+                <Tooltip
+                  content={<CustomTooltip chartTitle={title} total={total} />}
+                />
+                <Bar dataKey="value" radius={[0, 8, 8, 0]}>
+                  {safeData.map((entry, index) => (
+                    <Cell
+                      key={`${entry.name}-${index}`}
+                      fill={colors[index % colors.length] || primary}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
             ) : (
               <BarChart data={safeData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip
-                  content={
-                    <CustomTooltip chartTitle={title} total={total} />
-                  }
+                  content={<CustomTooltip chartTitle={title} total={total} />}
                 />
                 <Bar dataKey="value" radius={[8, 8, 0, 0]}>
                   {safeData.map((entry, index) => (
