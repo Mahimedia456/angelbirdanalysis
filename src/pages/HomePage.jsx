@@ -4,6 +4,7 @@ import {
   BarChart3,
   Database,
   FileSpreadsheet,
+  SmilePlus,
   Trash2,
 } from "lucide-react";
 import CsvUploader from "../components/upload/CsvUploader";
@@ -13,16 +14,22 @@ import ProductColumnMapper from "../components/products/ProductColumnMapper";
 import ProductReportTable from "../components/products/ProductReportTable";
 import TicketColumnMapper from "../components/tickets/TicketColumnMapper";
 import TicketReportTable from "../components/tickets/TicketReportTable";
+import SatisfactionReportTable from "../components/satisfaction/SatisfactionReportTable";
 import {
   clearAllData,
   getProductsData,
   getRawProductsData,
+  getRawSatisfactionData,
   getRawTicketsData,
+  getSatisfactionData,
   getTicketsData,
   saveProductMapping,
   saveProductsData,
   saveRawProductsData,
+  saveRawSatisfactionData,
   saveRawTicketsData,
+  saveSatisfactionData,
+  saveSatisfactionMapping,
   saveTicketMapping,
   saveTicketsData,
 } from "../utils/storage";
@@ -34,6 +41,10 @@ import {
   applyProductMapping,
   detectProductMapping,
 } from "../utils/productMapper";
+import {
+  applySatisfactionMapping,
+  detectSatisfactionMapping,
+} from "../utils/satisfactionMapper";
 import { Link } from "react-router-dom";
 
 const featureCards = [
@@ -49,8 +60,14 @@ const featureCards = [
     icon: Database,
   },
   {
+    title: "Satisfaction Analytics",
+    description:
+      "Analyze good/bad ratings, solved status, comments, reasons and date trends.",
+    icon: SmilePlus,
+  },
+  {
     title: "Configurable Charts",
-    description: "Separate chart reporting for products and tickets.",
+    description: "Separate chart reporting for products, tickets and satisfaction.",
     icon: BarChart3,
   },
 ];
@@ -62,11 +79,18 @@ export default function HomePage() {
   const [rawProductRows, setRawProductRows] = useState([]);
   const [productRows, setProductRows] = useState([]);
 
+  const [rawSatisfactionRows, setRawSatisfactionRows] = useState([]);
+  const [satisfactionRows, setSatisfactionRows] = useState([]);
+
   useEffect(() => {
     setRawTicketRows(getRawTicketsData());
     setTicketRows(getTicketsData());
+
     setRawProductRows(getRawProductsData());
     setProductRows(getProductsData());
+
+    setRawSatisfactionRows(getRawSatisfactionData());
+    setSatisfactionRows(getSatisfactionData());
   }, []);
 
   function handleTicketUpload({ rows }) {
@@ -95,6 +119,19 @@ export default function HomePage() {
     setProductRows(mapped);
   }
 
+  function handleSatisfactionUpload({ rows }) {
+    saveRawSatisfactionData(rows);
+    setRawSatisfactionRows(rows);
+
+    const columns = rows.length ? Object.keys(rows[0]) : [];
+    const mapping = detectSatisfactionMapping(columns);
+    const mapped = applySatisfactionMapping(rows, mapping);
+
+    saveSatisfactionMapping(mapping);
+    saveSatisfactionData(mapped);
+    setSatisfactionRows(mapped);
+  }
+
   function handleTicketsMapped(mappedTickets) {
     setTicketRows(mappedTickets);
   }
@@ -105,7 +142,7 @@ export default function HomePage() {
 
   function handleClearAllData() {
     const ok = window.confirm(
-      "This will remove uploaded ticket CSV, product CSV and mapped data from this browser. Continue?"
+      "This will remove uploaded ticket CSV, product CSV, satisfaction CSV and mapped data from this browser. Continue?"
     );
 
     if (!ok) return;
@@ -114,8 +151,12 @@ export default function HomePage() {
 
     setRawTicketRows([]);
     setTicketRows([]);
+
     setRawProductRows([]);
     setProductRows([]);
+
+    setRawSatisfactionRows([]);
+    setSatisfactionRows([]);
   }
 
   return (
@@ -128,12 +169,13 @@ export default function HomePage() {
             <p className="angel-mini-label">Angelbird Analytics Tool</p>
 
             <h1 className="mt-5 max-w-4xl text-5xl font-black leading-[0.95] tracking-[-0.065em] text-slate-900 md:text-7xl">
-              Ticket analytics and product master reporting.
+              Ticket, product and satisfaction reporting.
             </h1>
 
             <p className="mt-7 max-w-2xl text-base leading-7 text-slate-600">
-              Upload ticket CSV and product master CSV. Columns now auto-map
-              after upload. Manual mapping is available only for correction.
+              Upload ticket CSV, product master CSV and customer satisfaction CSV.
+              Columns auto-map after upload. Manual mapping remains available for
+              ticket and product correction.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
@@ -155,7 +197,7 @@ export default function HomePage() {
               </button>
             </div>
 
-            <div className="mt-10 grid max-w-2xl gap-3 sm:grid-cols-3">
+            <div className="mt-10 grid max-w-3xl gap-3 sm:grid-cols-4">
               <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
                 <p className="text-2xl font-black text-slate-900">
                   {ticketRows.length}
@@ -176,7 +218,18 @@ export default function HomePage() {
 
               <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
                 <p className="text-2xl font-black text-slate-900">
-                  {rawTicketRows.length + rawProductRows.length}
+                  {satisfactionRows.length}
+                </p>
+                <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                  Satisfaction
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                <p className="text-2xl font-black text-slate-900">
+                  {rawTicketRows.length +
+                    rawProductRows.length +
+                    rawSatisfactionRows.length}
                 </p>
                 <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
                   Raw Rows
@@ -200,29 +253,30 @@ export default function HomePage() {
                 </h2>
 
                 <p className="mt-4 text-sm leading-6 text-white/65">
-                  Fake empty columns are removed. Dates are normalized correctly.
+                  Fake empty columns are removed. Dates, ratings and solved
+                  status are normalized for reporting.
                 </p>
               </div>
 
               <div className="mt-5 grid grid-cols-3 gap-3">
                 <div className="rounded-2xl bg-white p-4">
-                  <p className="text-xl font-black text-slate-900">2026</p>
+                  <p className="text-xl font-black text-slate-900">Good</p>
                   <p className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                    Date Fix
+                    Rating
                   </p>
                 </div>
 
                 <div className="rounded-2xl bg-white p-4">
-                  <p className="text-xl font-black text-slate-900">Region</p>
+                  <p className="text-xl font-black text-slate-900">Bad</p>
                   <p className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                    Clean
+                    Rating
                   </p>
                 </div>
 
                 <div className="rounded-2xl bg-white p-4">
-                  <p className="text-xl font-black text-slate-900">Charts</p>
+                  <p className="text-xl font-black text-slate-900">Solved</p>
                   <p className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                    Colors
+                    Status
                   </p>
                 </div>
               </div>
@@ -233,7 +287,7 @@ export default function HomePage() {
 
       <ProductTemplateDownload />
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid gap-6 xl:grid-cols-3">
         <CsvUploader
           title="Upload Ticket Analytics CSV"
           description="Upload support ticket CSV. It will auto-map after upload."
@@ -246,6 +300,13 @@ export default function HomePage() {
           description="Upload product master CSV. It will auto-map after upload."
           buttonLabel="Upload Products CSV"
           onUpload={handleProductUpload}
+        />
+
+        <CsvUploader
+          title="Upload Satisfaction CSV"
+          description="Upload customer satisfaction CSV with rating, comment, reason, updated date and solved status."
+          buttonLabel="Upload Satisfaction CSV"
+          onUpload={handleSatisfactionUpload}
         />
       </div>
 
@@ -272,6 +333,16 @@ export default function HomePage() {
         <ProductReportTable
           title="Mapped Products Preview"
           products={productRows.slice(0, 20)}
+        />
+
+        <DataPreview
+          title="Raw Satisfaction CSV Preview"
+          rows={rawSatisfactionRows}
+        />
+
+        <SatisfactionReportTable
+          title="Mapped Satisfaction Preview"
+          rows={satisfactionRows.slice(0, 20)}
         />
       </div>
     </div>

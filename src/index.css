@@ -107,26 +107,47 @@ textarea {
   background-size: 42px 42px;
 }
 
-@media print {
-  header,
-  aside,
-  .no-print {
-    display: none !important;
-  }
+.pdf-exporting {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  overflow: visible !important;
+  height: auto !important;
+  max-height: none !important;
+}
 
-  body {
-    background: white !important;
-  }
+.pdf-exporting * {
+  overflow: visible !important;
+}
 
-  main {
-    width: 100% !important;
-  }
+.pdf-exporting .no-print,
+.pdf-exporting .no-export,
+.pdf-exporting .pdf-hide {
+  display: none !important;
+}
 
-  .angel-card,
-  .angel-section {
-    box-shadow: none !important;
-    break-inside: avoid;
-  }
+.pdf-exporting .recharts-wrapper,
+.pdf-exporting .recharts-responsive-container,
+.pdf-exporting .recharts-surface,
+.pdf-exporting svg {
+  overflow: visible !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
+.pdf-exporting .overflow-x-auto {
+  overflow: visible !important;
+}
+
+.pdf-export-section,
+.angel-card,
+.angel-section {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.angel-page-break {
+  break-before: page;
+  page-break-before: always;
 }
 
 @media print {
@@ -138,13 +159,20 @@ textarea {
   html,
   body {
     background: #ffffff !important;
+    overflow: visible !important;
   }
 
   header,
   aside,
   footer,
-  .no-print {
+  .no-print,
+  .no-export,
+  .pdf-hide {
     display: none !important;
+  }
+
+  main {
+    width: 100% !important;
   }
 
   .angel-container {
@@ -153,111 +181,44 @@ textarea {
     padding: 0 !important;
   }
 
-  main {
-    width: 100% !important;
-  }
-
-  #export-area {
+  #export-area,
+  #dashboard-export-area,
+  #reports-export-area,
+  #angelbird-report-export {
     width: 100% !important;
     max-width: none !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
   }
 
   .angel-card,
-  .angel-section {
+  .angel-section,
+  .pdf-export-section {
     box-shadow: none !important;
     break-inside: avoid;
     page-break-inside: avoid;
   }
 
   .recharts-wrapper,
-  .recharts-surface {
+  .recharts-responsive-container,
+  .recharts-surface,
+  svg {
+    overflow: visible !important;
+  }
+
+  .overflow-x-auto {
     overflow: visible !important;
   }
 
   table {
     page-break-inside: auto;
+    width: 100% !important;
   }
 
   tr {
     page-break-inside: avoid;
     page-break-after: auto;
-  }
-}
-
-.pdf-exporting {
-  background: #ffffff !important;
-  color: #0f172a !important;
-  overflow: visible !important;
-  height: auto !important;
-  max-height: none !important;
-}
-
-.pdf-exporting * {
-  overflow: visible !important;
-}
-
-.pdf-exporting .recharts-wrapper,
-.pdf-exporting .recharts-responsive-container,
-.pdf-exporting svg {
-  overflow: visible !important;
-}
-
-@media print {
-  body {
-    background: #ffffff !important;
-  }
-
-  .no-print,
-  .pdf-hide {
-    display: none !important;
-  }
-
-  #angelbird-report-export {
-    box-shadow: none !important;
-    border: none !important;
-    ring: none !important;
-    padding: 0 !important;
-  }
-
-  .angel-page-break {
-    break-before: page;
-    page-break-before: always;
-  }
-}
-
-.pdf-exporting {
-  background: #ffffff !important;
-  color: #0f172a !important;
-  overflow: visible !important;
-  height: auto !important;
-  max-height: none !important;
-}
-
-.pdf-exporting * {
-  overflow: visible !important;
-}
-
-.pdf-exporting .recharts-wrapper,
-.pdf-exporting .recharts-responsive-container,
-.pdf-exporting .recharts-surface,
-.pdf-exporting svg {
-  overflow: visible !important;
-}
-
-@media print {
-  body {
-    background: #ffffff !important;
-  }
-
-  .no-print,
-  .no-export,
-  .pdf-hide {
-    display: none !important;
-  }
-
-  #dashboard-export-area,
-  #reports-export-area {
-    background: #ffffff !important;
-    box-shadow: none !important;
   }
 }

@@ -1,4 +1,5 @@
 const DATA_KEY = "angelbird_uploaded_data";
+
 const TICKETS_KEY = "angelbird_tickets_data";
 const RAW_TICKETS_KEY = "angelbird_raw_tickets_data";
 const TICKET_MAPPING_KEY = "angelbird_ticket_column_mapping";
@@ -6,6 +7,10 @@ const TICKET_MAPPING_KEY = "angelbird_ticket_column_mapping";
 const PRODUCTS_KEY = "angelbird_products_data";
 const RAW_PRODUCTS_KEY = "angelbird_raw_products_data";
 const PRODUCT_MAPPING_KEY = "angelbird_product_column_mapping";
+
+const SATISFACTION_KEY = "angelbird_satisfaction_data";
+const RAW_SATISFACTION_KEY = "angelbird_raw_satisfaction_data";
+const SATISFACTION_MAPPING_KEY = "angelbird_satisfaction_column_mapping";
 
 const THEME_KEY = "angelbird_theme_settings";
 const CHART_KEY = "angelbird_chart_settings";
@@ -40,6 +45,17 @@ export const DEFAULT_CHART_SETTINGS = {
   reportSupportChart: "area",
   reportProductCategoryChart: "bar",
   reportProcedureChart: "bar",
+
+  satisfactionRatingChart: "donut",
+  satisfactionSolvedChart: "pie",
+  satisfactionDailyChart: "line",
+  satisfactionReasonChart: "bar",
+  satisfactionCommentChart: "bar",
+
+  reportSatisfactionRatingChart: "donut",
+  reportSatisfactionSolvedChart: "pie",
+  reportSatisfactionDailyChart: "line",
+  reportSatisfactionReasonChart: "bar",
 };
 
 export function saveMainData(rows) {
@@ -121,6 +137,42 @@ export function saveProductMapping(mapping) {
 export function getProductMapping() {
   try {
     return JSON.parse(localStorage.getItem(PRODUCT_MAPPING_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+export function saveRawSatisfactionData(rows) {
+  localStorage.setItem(RAW_SATISFACTION_KEY, JSON.stringify(rows || []));
+}
+
+export function getRawSatisfactionData() {
+  try {
+    return JSON.parse(localStorage.getItem(RAW_SATISFACTION_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+export function saveSatisfactionData(rows) {
+  localStorage.setItem(SATISFACTION_KEY, JSON.stringify(rows || []));
+}
+
+export function getSatisfactionData() {
+  try {
+    return JSON.parse(localStorage.getItem(SATISFACTION_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+export function saveSatisfactionMapping(mapping) {
+  localStorage.setItem(SATISFACTION_MAPPING_KEY, JSON.stringify(mapping || {}));
+}
+
+export function getSatisfactionMapping() {
+  try {
+    return JSON.parse(localStorage.getItem(SATISFACTION_MAPPING_KEY) || "{}");
   } catch {
     return {};
   }
@@ -241,10 +293,16 @@ export function resetChartTypeOverrides() {
 
 export function clearAllData() {
   localStorage.removeItem(DATA_KEY);
+
   localStorage.removeItem(TICKETS_KEY);
   localStorage.removeItem(RAW_TICKETS_KEY);
   localStorage.removeItem(TICKET_MAPPING_KEY);
+
   localStorage.removeItem(PRODUCTS_KEY);
   localStorage.removeItem(RAW_PRODUCTS_KEY);
   localStorage.removeItem(PRODUCT_MAPPING_KEY);
+
+  localStorage.removeItem(SATISFACTION_KEY);
+  localStorage.removeItem(RAW_SATISFACTION_KEY);
+  localStorage.removeItem(SATISFACTION_MAPPING_KEY);
 }

@@ -4,26 +4,35 @@ import ProductReportTable from "../components/products/ProductReportTable";
 import ProductCategoryCards from "../components/products/ProductCategoryCards";
 import TicketFilters from "../components/tickets/TicketFilters";
 import TicketKpiCards from "../components/tickets/TicketKpiCards";
+import TicketAnalyticsPanel from "../components/tickets/TicketAnalyticsPanel";
 import TicketReportTable from "../components/tickets/TicketReportTable";
 import SummaryTable from "../components/dashboard/SummaryTable";
 import ChartPanel from "../components/dashboard/ChartPanel";
 import PivotTable from "../components/dashboard/PivotTable";
 import ExportActions from "../components/export/ExportActions";
+import SatisfactionFilters from "../components/satisfaction/SatisfactionFilters";
+import SatisfactionKpiCards from "../components/satisfaction/SatisfactionKpiCards";
+import SatisfactionAnalyticsPanel from "../components/satisfaction/SatisfactionAnalyticsPanel";
+import SatisfactionReportTable from "../components/satisfaction/SatisfactionReportTable";
 import {
   getChartSettings,
   getProductsData,
+  getSatisfactionData,
   getTicketsData,
 } from "../utils/storage";
 import { buildProductAnalytics } from "../utils/analytics";
 import { filterProducts } from "../utils/productMapper";
 import { filterTickets } from "../utils/ticketMapper";
 import { buildTicketAnalytics } from "../utils/ticketAnalytics";
+import { filterSatisfaction } from "../utils/satisfactionMapper";
+import { buildSatisfactionAnalytics } from "../utils/satisfactionAnalytics";
 
 export default function ReportsPage() {
   const [mode, setMode] = useState("tickets");
 
   const [ticketRows, setTicketRows] = useState([]);
   const [productRows, setProductRows] = useState([]);
+  const [satisfactionRows, setSatisfactionRows] = useState([]);
   const [chartSettings, setChartSettings] = useState(getChartSettings());
 
   const [ticketFilters, setTicketFilters] = useState({
@@ -41,9 +50,19 @@ export default function ReportsPage() {
     category: "",
   });
 
+  const [satisfactionFilters, setSatisfactionFilters] = useState({
+    search: "",
+    rating: "",
+    reason: "",
+    solvedStatus: "",
+    dateFrom: "",
+    dateTo: "",
+  });
+
   useEffect(() => {
     setTicketRows(getTicketsData());
     setProductRows(getProductsData());
+    setSatisfactionRows(getSatisfactionData());
     setChartSettings(getChartSettings());
   }, []);
 
@@ -67,6 +86,16 @@ export default function ReportsPage() {
     [filteredProducts]
   );
 
+  const filteredSatisfaction = useMemo(
+    () => filterSatisfaction(satisfactionRows, satisfactionFilters),
+    [satisfactionRows, satisfactionFilters]
+  );
+
+  const satisfactionAnalytics = useMemo(
+    () => buildSatisfactionAnalytics(filteredSatisfaction),
+    [filteredSatisfaction]
+  );
+
   return (
     <div className="space-y-8">
       <section className="overflow-hidden rounded-[38px] border border-slate-200 bg-white shadow-soft">
@@ -84,8 +113,8 @@ export default function ReportsPage() {
             </h1>
 
             <p className="mt-5 max-w-2xl text-sm leading-6 text-slate-700">
-              Print and download accurate PDF reports with charts, KPIs,
-              summary tables and filtered data.
+              Reports include charts, KPI summaries, pivot tables and detailed
+              data tables for export.
             </p>
           </div>
         </div>
@@ -118,12 +147,26 @@ export default function ReportsPage() {
           >
             Product Master Report
           </button>
+
+          <button
+            type="button"
+            onClick={() => setMode("satisfaction")}
+            className={[
+              "rounded-2xl px-5 py-3 text-sm font-black transition",
+              mode === "satisfaction"
+                ? "bg-slate-900 text-white"
+                : "text-slate-500 hover:bg-slate-100 hover:text-slate-900",
+            ].join(" ")}
+          >
+            Satisfaction Report
+          </button>
         </div>
 
-        <ExportActions
-          targetId="reports-export-area"
-          title={`Angelbird Report ${mode}`}
-        />
+<ExportActions
+  targetId="reports-export-area"
+  title={`Angelbird Report ${mode}`}
+  mode="report"
+/>
       </div>
 
       <div
@@ -140,7 +183,7 @@ export default function ReportsPage() {
               />
             </div>
 
-            <section className="angel-section p-6">
+            <section className="angel-section p-6 pdf-export-section">
               <p className="angel-mini-label">Report Summary</p>
               <h2 className="mt-2 angel-page-title">
                 Ticket Analytics Summary
@@ -153,55 +196,12 @@ export default function ReportsPage() {
 
             <TicketKpiCards analytics={ticketAnalytics} />
 
-            <div className="grid gap-6 xl:grid-cols-2">
-              <ChartPanel
-                chartId="report_date_wise_ticket_trend"
-                title="Date-wise Ticket Trend"
-                data={ticketAnalytics.dailySummary}
-                type={chartSettings.reportDateTrendChart || "line"}
-              />
-
-              <ChartPanel
-                chartId="report_support_category_report"
-                title="Support Category Report"
-                data={ticketAnalytics.supportCategorySummary}
-                type={chartSettings.reportSupportChart || "area"}
-              />
-
-              <ChartPanel
-                chartId="report_product_category_report"
-                title="Product Category Report"
-                data={ticketAnalytics.productCategorySummary}
-                type={chartSettings.reportProductCategoryChart || "bar"}
-              />
-
-              <ChartPanel
-                chartId="report_procedure_report"
-                title="Procedure Report"
-                data={ticketAnalytics.procedureSummary}
-                type={chartSettings.reportProcedureChart || "bar"}
-              />
-
-              <SummaryTable
-                title="Support Category Summary"
-                data={ticketAnalytics.supportCategorySummary}
-              />
-
-              <SummaryTable
-                title="Product Category Summary"
-                data={ticketAnalytics.productCategorySummary}
-              />
-
-              <SummaryTable
-                title="Procedure Summary"
-                data={ticketAnalytics.procedureSummary}
-              />
-
-              <SummaryTable
-                title="Region Summary"
-                data={ticketAnalytics.regionSummary}
-              />
-            </div>
+            <TicketAnalyticsPanel
+              analytics={ticketAnalytics}
+              chartSettings={chartSettings}
+              prefix="report"
+              showTables={true}
+            />
 
             <TicketReportTable
               title="Ticket Report Data"
@@ -210,7 +210,7 @@ export default function ReportsPage() {
 
             <PivotTable rows={filteredTickets} title="Ticket Report Pivot" />
           </>
-        ) : (
+        ) : mode === "products" ? (
           <>
             <div className="no-print no-export">
               <ProductFilters
@@ -220,7 +220,7 @@ export default function ReportsPage() {
               />
             </div>
 
-            <section className="angel-section p-6">
+            <section className="angel-section p-6 pdf-export-section">
               <p className="angel-mini-label">Report Summary</p>
               <h2 className="mt-2 angel-page-title">
                 Product Master Summary
@@ -244,6 +244,7 @@ export default function ReportsPage() {
               />
 
               <ChartPanel
+                className="xl:col-span-2"
                 chartId="report_sku_records"
                 title="SKU Records"
                 data={productAnalytics.skuSummary}
@@ -267,6 +268,41 @@ export default function ReportsPage() {
             />
 
             <PivotTable rows={filteredProducts} title="Product Master Pivot" />
+          </>
+        ) : (
+          <>
+            <div className="no-print no-export">
+              <SatisfactionFilters
+                rows={satisfactionRows}
+                filters={satisfactionFilters}
+                onChange={setSatisfactionFilters}
+              />
+            </div>
+
+            <section className="angel-section p-6 pdf-export-section">
+              <p className="angel-mini-label">Report Summary</p>
+              <h2 className="mt-2 angel-page-title">
+                Customer Satisfaction Summary
+              </h2>
+              <p className="mt-2 text-sm text-slate-500">
+                Filtered responses: {filteredSatisfaction.length} from{" "}
+                {satisfactionRows.length} total records.
+              </p>
+            </section>
+
+            <SatisfactionKpiCards analytics={satisfactionAnalytics} />
+
+            <SatisfactionAnalyticsPanel
+              analytics={satisfactionAnalytics}
+              chartSettings={chartSettings}
+              prefix="report"
+              showTables={true}
+            />
+
+            <SatisfactionReportTable
+              title="Customer Satisfaction Report Data"
+              rows={filteredSatisfaction}
+            />
           </>
         )}
       </div>
