@@ -1,22 +1,29 @@
-function groupCount(rows, key) {
+function safeText(value = "") {
+  return String(value ?? "").trim();
+}
+
+function groupCount(rows = [], key) {
   const map = {};
 
   rows.forEach((row) => {
-    const label = String(row[key] || "Unknown").trim() || "Unknown";
+    const label = safeText(row?.[key]) || "Unknown";
     map[label] = (map[label] || 0) + 1;
   });
 
   return Object.entries(map)
-    .map(([name, value]) => ({ name, value }))
+    .map(([name, value]) => ({
+      name,
+      value,
+    }))
     .sort((a, b) => b.value - a.value);
 }
 
-function productCount(rows) {
+function productCount(rows = []) {
   const map = {};
 
   rows.forEach((row) => {
-    const product1 = String(row.product_1 || "").trim();
-    const product2 = String(row.product_2 || "").trim();
+    const product1 = safeText(row?.product_1);
+    const product2 = safeText(row?.product_2);
 
     if (product1 && product1 !== "Unknown" && product1 !== "NA") {
       map[product1] = (map[product1] || 0) + 1;
@@ -28,63 +35,146 @@ function productCount(rows) {
   });
 
   return Object.entries(map)
-    .map(([name, value]) => ({ name, value }))
+    .map(([name, value]) => ({
+      name,
+      value,
+    }))
     .sort((a, b) => b.value - a.value);
 }
 
-function dailyTrend(rows) {
+function isValidDateKey(value = "") {
+  const text = safeText(value);
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    return false;
+  }
+
+  const [yearText, monthText, dayText] = text.split("-");
+
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+
+  if (!Number.isInteger(year) || year < 2000 || year > 2030) {
+    return false;
+  }
+
+  if (!Number.isInteger(month) || month < 1 || month > 12) {
+    return false;
+  }
+
+  if (!Number.isInteger(day) || day < 1 || day > 31) {
+    return false;
+  }
+
+  const date = new Date(year, month - 1, day);
+
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  );
+}
+
+function dailyTrend(rows = []) {
   const map = {};
 
   rows.forEach((row) => {
-    const key = row.date_key || "Unknown";
-    map[key] = (map[key] || 0) + 1;
+    const dateKey = safeText(row?.date_key);
+
+    if (!isValidDateKey(dateKey)) {
+      return;
+    }
+
+    map[dateKey] = (map[dateKey] || 0) + 1;
   });
 
   return Object.entries(map)
-    .map(([name, value]) => ({ name, value }))
+    .map(([name, value]) => ({
+      name,
+      value,
+    }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function monthlyTrend(rows) {
+function monthlyTrend(rows = []) {
   const map = {};
 
   rows.forEach((row) => {
-    const key = row.month_key || "Unknown";
-    map[key] = (map[key] || 0) + 1;
+    const dateKey = safeText(row?.date_key);
+
+    if (!isValidDateKey(dateKey)) {
+      return;
+    }
+
+    /*
+     * Month is always derived from the validated date_key.
+     *
+     * Example:
+     * 2026-04-01 -> 2026-04
+     *
+     * Do not trust row.month_key because old localStorage records
+     * may contain invalid values such as 2034-01 or 2036-01.
+     */
+    const monthKey = dateKey.slice(0, 7);
+
+    map[monthKey] = (map[monthKey] || 0) + 1;
   });
 
   return Object.entries(map)
-    .map(([name, value]) => ({ name, value }))
+    .map(([name, value]) => ({
+      name,
+      value,
+    }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 function changePercent(current, previous) {
-  const c = Number(current || 0);
-  const p = Number(previous || 0);
+  const currentValue = Number(current || 0);
+  const previousValue = Number(previous || 0);
 
-  if (p === 0 && c === 0) return 0;
-  if (p === 0 && c > 0) return 100;
+  if (previousValue === 0 && currentValue === 0) {
+    return 0;
+  }
 
-  return ((c - p) / p) * 100;
+  if (previousValue === 0 && currentValue > 0) {
+    return 100;
+  }
+
+  return ((currentValue - previousValue) / previousValue) * 100;
 }
 
-function splitCurrentPreviousByDate(rows) {
+function splitCurrentPreviousByDate(rows = []) {
   const validRows = rows
-    .filter((row) => row.date_key && row.date_key !== "Unknown")
-    .sort((a, b) => a.date_key.localeCompare(b.date_key));
+    .filter((row) => isValidDateKey(row?.date_key))
+    .sort((a, b) =>
+      safeText(a?.date_key).localeCompare(safeText(b?.date_key))
+    );
 
   if (!validRows.length) {
     return {
-      current: rows,
+      current: [],
       previous: [],
-      currentLabel: "Current",
-      previousLabel: "Previous",
+      currentLabel: "No valid dates",
+      previousLabel: "No valid dates",
     };
   }
 
-  const uniqueDates = Array.from(new Set(validRows.map((row) => row.date_key)));
+  const uniqueDates = Array.from(
+    new Set(validRows.map((row) => safeText(row.date_key)))
+  );
+
+  if (uniqueDates.length === 1) {
+    return {
+      current: validRows,
+      previous: [],
+      currentLabel: uniqueDates[0],
+      previousLabel: "No previous period",
+    };
+  }
 
   const midpoint = Math.ceil(uniqueDates.length / 2);
+
   const previousDates = uniqueDates.slice(0, midpoint);
   const currentDates = uniqueDates.slice(midpoint);
 
@@ -92,8 +182,8 @@ function splitCurrentPreviousByDate(rows) {
     return {
       current: validRows,
       previous: [],
-      currentLabel: "Current",
-      previousLabel: "Previous",
+      currentLabel: uniqueDates[0],
+      previousLabel: "No previous period",
     };
   }
 
@@ -101,34 +191,53 @@ function splitCurrentPreviousByDate(rows) {
   const currentSet = new Set(currentDates);
 
   return {
-    current: validRows.filter((row) => currentSet.has(row.date_key)),
-    previous: validRows.filter((row) => previousSet.has(row.date_key)),
-    currentLabel: `${currentDates[0]} to ${currentDates[currentDates.length - 1]}`,
-    previousLabel: `${previousDates[0]} to ${previousDates[previousDates.length - 1]}`,
+    current: validRows.filter((row) =>
+      currentSet.has(safeText(row.date_key))
+    ),
+
+    previous: validRows.filter((row) =>
+      previousSet.has(safeText(row.date_key))
+    ),
+
+    currentLabel: `${currentDates[0]} to ${
+      currentDates[currentDates.length - 1]
+    }`,
+
+    previousLabel: `${previousDates[0]} to ${
+      previousDates[previousDates.length - 1]
+    }`,
   };
 }
 
-function categoryValue(rows, key, value) {
-  return rows.filter((row) => String(row[key] || "") === value).length;
+function categoryValue(rows = [], key, value) {
+  const expected = safeText(value);
+
+  return rows.filter(
+    (row) => safeText(row?.[key]) === expected
+  ).length;
 }
 
-function buildComparisonItems(allRows, analyticsRows) {
+function buildComparisonItems(allRows = [], analyticsBuilder) {
   const split = splitCurrentPreviousByDate(allRows);
 
-  const currentAnalytics = analyticsRows(split.current);
-  const previousAnalytics = analyticsRows(split.previous);
+  const currentAnalytics = analyticsBuilder(split.current);
+  const previousAnalytics = analyticsBuilder(split.previous);
 
   return {
     labels: {
       currentLabel: split.currentLabel,
       previousLabel: split.previousLabel,
     },
+
     items: [
       {
         label: "Total Tickets",
         current: split.current.length,
         previous: split.previous.length,
-        changePercent: changePercent(split.current.length, split.previous.length),
+        changePercent: changePercent(
+          split.current.length,
+          split.previous.length
+        ),
       },
       {
         label: "Data Recovery",
@@ -161,12 +270,17 @@ function buildComparisonItems(allRows, analyticsRows) {
   };
 }
 
-function buildTopComparison(rows, key) {
+function buildTopComparison(rows = [], key) {
   const split = splitCurrentPreviousByDate(rows);
+
   const currentSummary = groupCount(split.current, key).slice(0, 8);
 
   return currentSummary.map((item) => {
-    const previous = categoryValue(split.previous, key, item.name);
+    const previous = categoryValue(
+      split.previous,
+      key,
+      item.name
+    );
 
     return {
       name: item.name,
@@ -177,13 +291,21 @@ function buildTopComparison(rows, key) {
   });
 }
 
-function matrixCount(rows, rowKey, colKey) {
+function matrixCount(rows = [], rowKey, columnKey) {
   const rowLabels = Array.from(
-    new Set(rows.map((row) => String(row[rowKey] || "Unknown")))
+    new Set(
+      rows.map(
+        (row) => safeText(row?.[rowKey]) || "Unknown"
+      )
+    )
   ).sort((a, b) => a.localeCompare(b));
 
-  const colLabels = Array.from(
-    new Set(rows.map((row) => String(row[colKey] || "Unknown")))
+  const columnLabels = Array.from(
+    new Set(
+      rows.map(
+        (row) => safeText(row?.[columnKey]) || "Unknown"
+      )
+    )
   ).sort((a, b) => a.localeCompare(b));
 
   const data = rowLabels.map((rowLabel) => {
@@ -192,14 +314,21 @@ function matrixCount(rows, rowKey, colKey) {
       total: 0,
     };
 
-    colLabels.forEach((colLabel) => {
-      const count = rows.filter(
-        (row) =>
-          String(row[rowKey] || "Unknown") === rowLabel &&
-          String(row[colKey] || "Unknown") === colLabel
-      ).length;
+    columnLabels.forEach((columnLabel) => {
+      const count = rows.filter((row) => {
+        const currentRowLabel =
+          safeText(row?.[rowKey]) || "Unknown";
 
-      item[colLabel] = count;
+        const currentColumnLabel =
+          safeText(row?.[columnKey]) || "Unknown";
+
+        return (
+          currentRowLabel === rowLabel &&
+          currentColumnLabel === columnLabel
+        );
+      }).length;
+
+      item[columnLabel] = count;
       item.total += count;
     });
 
@@ -207,99 +336,188 @@ function matrixCount(rows, rowKey, colKey) {
   });
 
   return {
-    columns: colLabels,
+    columns: columnLabels,
     rows: data.sort((a, b) => b.total - a.total),
   };
 }
 
+function contains(value, search) {
+  return safeText(value)
+    .toLowerCase()
+    .includes(String(search || "").toLowerCase());
+}
+
 export function buildTicketAnalytics(tickets = []) {
-  const totalTickets = tickets.length;
+  const safeTickets = Array.isArray(tickets)
+    ? tickets
+    : [];
 
-  const dailySummary = dailyTrend(tickets);
-  const monthlySummary = monthlyTrend(tickets);
-  const supportCategorySummary = groupCount(tickets, "support_category");
-  const productCategorySummary = groupCount(tickets, "product_category");
-  const procedureSummary = groupCount(tickets, "procedure");
-  const regionSummary = groupCount(tickets, "region");
-  const tseSummary = groupCount(tickets, "tse");
-  const productSummary = productCount(tickets);
+  const totalTickets = safeTickets.length;
 
-  const dataRecoveryTickets = tickets.filter(
+  const dailySummary = dailyTrend(safeTickets);
+  const monthlySummary = monthlyTrend(safeTickets);
+
+  const supportCategorySummary = groupCount(
+    safeTickets,
+    "support_category"
+  );
+
+  const productCategorySummary = groupCount(
+    safeTickets,
+    "product_category"
+  );
+
+  const procedureSummary = groupCount(
+    safeTickets,
+    "procedure"
+  );
+
+  const regionSummary = groupCount(
+    safeTickets,
+    "region"
+  );
+
+  const tseSummary = groupCount(
+    safeTickets,
+    "tse"
+  );
+
+  const productSummary = productCount(
+    safeTickets
+  );
+
+  const dataRecoveryTickets = safeTickets.filter(
     (ticket) =>
-      ticket.support_category.toLowerCase().includes("data recovery") ||
-      ticket.procedure.toLowerCase().includes("dr")
+      contains(
+        ticket?.support_category,
+        "data recovery"
+      ) ||
+      contains(ticket?.procedure, "dr")
   );
 
-  const rmaTickets = tickets.filter(
+  const rmaTickets = safeTickets.filter(
     (ticket) =>
-      ticket.procedure.toLowerCase().includes("rma") ||
-      ticket.ticket_subject.toLowerCase().includes("rma")
+      contains(ticket?.procedure, "rma") ||
+      contains(ticket?.ticket_subject, "rma")
   );
 
-  const troubleshootTickets = tickets.filter(
+  const troubleshootTickets = safeTickets.filter(
     (ticket) =>
-      ticket.support_category.toLowerCase().includes("troubleshoot") ||
-      ticket.procedure.toLowerCase().includes("troubleshoot")
+      contains(
+        ticket?.support_category,
+        "troubleshoot"
+      ) ||
+      contains(
+        ticket?.procedure,
+        "troubleshoot"
+      )
   );
 
-  const registrationTickets = tickets.filter((ticket) =>
-    ticket.support_category.toLowerCase().includes("registration")
-  );
-
-  const hardwareTickets = tickets.filter((ticket) =>
-    ticket.support_category.toLowerCase().includes("hardware")
-  );
-
-  const informationTickets = tickets.filter((ticket) =>
-    ticket.support_category.toLowerCase().includes("information")
-  );
-
-  const compatibilityTickets = tickets.filter((ticket) =>
-    ticket.support_category.toLowerCase().includes("compatibility")
-  );
-
-  const firmwareTickets = tickets.filter(
+  const registrationTickets = safeTickets.filter(
     (ticket) =>
-      ticket.support_category.toLowerCase().includes("firmware") ||
-      ticket.procedure.toLowerCase().includes("firmware") ||
-      ticket.ticket_subject.toLowerCase().includes("firmware")
+      contains(
+        ticket?.support_category,
+        "registration"
+      )
+  );
+
+  const hardwareTickets = safeTickets.filter(
+    (ticket) =>
+      contains(
+        ticket?.support_category,
+        "hardware"
+      )
+  );
+
+  const informationTickets = safeTickets.filter(
+    (ticket) =>
+      contains(
+        ticket?.support_category,
+        "information"
+      )
+  );
+
+  const compatibilityTickets = safeTickets.filter(
+    (ticket) =>
+      contains(
+        ticket?.support_category,
+        "compatibility"
+      )
+  );
+
+  const firmwareTickets = safeTickets.filter(
+    (ticket) =>
+      contains(
+        ticket?.support_category,
+        "firmware"
+      ) ||
+      contains(ticket?.procedure, "firmware") ||
+      contains(
+        ticket?.ticket_subject,
+        "firmware"
+      )
   );
 
   const supportByProductMatrix = matrixCount(
-    tickets,
+    safeTickets,
     "product_category",
     "support_category"
   );
 
   const procedureByProductMatrix = matrixCount(
-    tickets,
+    safeTickets,
     "product_category",
     "procedure"
   );
 
-  const baseResult = {
+  const result = {
     kpis: {
       totalTickets,
-      totalProducts: productSummary.length,
-      totalSupportCategories: supportCategorySummary.length,
-      totalProductCategories: productCategorySummary.length,
-      dataRecoveryCount: dataRecoveryTickets.length,
-      rmaCount: rmaTickets.length,
-      troubleshootCount: troubleshootTickets.length,
-      registrationCount: registrationTickets.length,
-      hardwareCount: hardwareTickets.length,
-      informationCount: informationTickets.length,
-      compatibilityCount: compatibilityTickets.length,
-      firmwareCount: firmwareTickets.length,
+
+      totalProducts:
+        productSummary.length,
+
+      totalSupportCategories:
+        supportCategorySummary.length,
+
+      totalProductCategories:
+        productCategorySummary.length,
+
+      dataRecoveryCount:
+        dataRecoveryTickets.length,
+
+      rmaCount:
+        rmaTickets.length,
+
+      troubleshootCount:
+        troubleshootTickets.length,
+
+      registrationCount:
+        registrationTickets.length,
+
+      hardwareCount:
+        hardwareTickets.length,
+
+      informationCount:
+        informationTickets.length,
+
+      compatibilityCount:
+        compatibilityTickets.length,
+
+      firmwareCount:
+        firmwareTickets.length,
     },
+
     dailySummary,
     monthlySummary,
+
     supportCategorySummary,
     productCategorySummary,
     procedureSummary,
     regionSummary,
     tseSummary,
     productSummary,
+
     dataRecoveryTickets,
     rmaTickets,
     troubleshootTickets,
@@ -308,57 +526,118 @@ export function buildTicketAnalytics(tickets = []) {
     informationTickets,
     compatibilityTickets,
     firmwareTickets,
+
     supportByProductMatrix,
     procedureByProductMatrix,
   };
 
-  baseResult.comparison = buildComparisonItems(tickets, buildTicketAnalyticsCore);
-  baseResult.supportCategoryComparison = buildTopComparison(
-    tickets,
-    "support_category"
+  result.comparison = buildComparisonItems(
+    safeTickets,
+    buildTicketAnalyticsCore
   );
-  baseResult.productCategoryComparison = buildTopComparison(
-    tickets,
-    "product_category"
-  );
-  baseResult.procedureComparison = buildTopComparison(tickets, "procedure");
-  baseResult.regionComparison = buildTopComparison(tickets, "region");
 
-  return baseResult;
+  result.supportCategoryComparison =
+    buildTopComparison(
+      safeTickets,
+      "support_category"
+    );
+
+  result.productCategoryComparison =
+    buildTopComparison(
+      safeTickets,
+      "product_category"
+    );
+
+  result.procedureComparison =
+    buildTopComparison(
+      safeTickets,
+      "procedure"
+    );
+
+  result.regionComparison =
+    buildTopComparison(
+      safeTickets,
+      "region"
+    );
+
+  return result;
 }
 
 function buildTicketAnalyticsCore(tickets = []) {
-  const productSummary = productCount(tickets);
-  const supportCategorySummary = groupCount(tickets, "support_category");
-  const productCategorySummary = groupCount(tickets, "product_category");
+  const safeTickets = Array.isArray(tickets)
+    ? tickets
+    : [];
 
-  const dataRecoveryTickets = tickets.filter(
-    (ticket) =>
-      ticket.support_category.toLowerCase().includes("data recovery") ||
-      ticket.procedure.toLowerCase().includes("dr")
-  );
+  const productSummary =
+    productCount(safeTickets);
 
-  const rmaTickets = tickets.filter(
-    (ticket) =>
-      ticket.procedure.toLowerCase().includes("rma") ||
-      ticket.ticket_subject.toLowerCase().includes("rma")
-  );
+  const supportCategorySummary =
+    groupCount(
+      safeTickets,
+      "support_category"
+    );
 
-  const troubleshootTickets = tickets.filter(
-    (ticket) =>
-      ticket.support_category.toLowerCase().includes("troubleshoot") ||
-      ticket.procedure.toLowerCase().includes("troubleshoot")
-  );
+  const productCategorySummary =
+    groupCount(
+      safeTickets,
+      "product_category"
+    );
+
+  const dataRecoveryTickets =
+    safeTickets.filter(
+      (ticket) =>
+        contains(
+          ticket?.support_category,
+          "data recovery"
+        ) ||
+        contains(ticket?.procedure, "dr")
+    );
+
+  const rmaTickets =
+    safeTickets.filter(
+      (ticket) =>
+        contains(ticket?.procedure, "rma") ||
+        contains(
+          ticket?.ticket_subject,
+          "rma"
+        )
+    );
+
+  const troubleshootTickets =
+    safeTickets.filter(
+      (ticket) =>
+        contains(
+          ticket?.support_category,
+          "troubleshoot"
+        ) ||
+        contains(
+          ticket?.procedure,
+          "troubleshoot"
+        )
+    );
 
   return {
     kpis: {
-      totalTickets: tickets.length,
-      totalProducts: productSummary.length,
-      totalSupportCategories: supportCategorySummary.length,
-      totalProductCategories: productCategorySummary.length,
-      dataRecoveryCount: dataRecoveryTickets.length,
-      rmaCount: rmaTickets.length,
-      troubleshootCount: troubleshootTickets.length,
+      totalTickets:
+        safeTickets.length,
+
+      totalProducts:
+        productSummary.length,
+
+      totalSupportCategories:
+        supportCategorySummary.length,
+
+      totalProductCategories:
+        productCategorySummary.length,
+
+      dataRecoveryCount:
+        dataRecoveryTickets.length,
+
+      rmaCount:
+        rmaTickets.length,
+
+      troubleshootCount:
+        troubleshootTickets.length,
     },
   };
 }
