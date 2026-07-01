@@ -1,6 +1,11 @@
+const DEFAULT_API_URL =
+  import.meta.env.PROD
+    ? "https://angelbirdanalysis-api.vercel.app/api"
+    : "http://localhost:5000/api";
+
 const API_BASE_URL = String(
   import.meta.env.VITE_API_URL ||
-    "http://localhost:5000/api"
+    DEFAULT_API_URL
 ).replace(/\/+$/, "");
 
 const ACCESS_TOKEN_KEY =
@@ -11,6 +16,12 @@ const REFRESH_TOKEN_KEY =
 
 const AUTH_USER_KEY =
   "angelbird_auth_user";
+
+/*
+ * Prevent multiple requests from trying to
+ * refresh the access token simultaneously.
+ */
+let refreshPromise = null;
 
 export function getAccessToken() {
   return (
@@ -46,18 +57,28 @@ export function getStoredUser() {
 export function saveAuthSession({
   user,
   session,
-}) {
-  if (session?.accessToken) {
+} = {}) {
+  const accessToken =
+    session?.accessToken ||
+    session?.access_token ||
+    "";
+
+  const refreshToken =
+    session?.refreshToken ||
+    session?.refresh_token ||
+    "";
+
+  if (accessToken) {
     localStorage.setItem(
       ACCESS_TOKEN_KEY,
-      session.accessToken
+      accessToken
     );
   }
 
-  if (session?.refreshToken) {
+  if (refreshToken) {
     localStorage.setItem(
       REFRESH_TOKEN_KEY,
-      session.refreshToken
+      refreshToken
     );
   }
 
@@ -69,7 +90,9 @@ export function saveAuthSession({
   }
 }
 
-export function saveStoredUser(user) {
+export function saveStoredUser(
+  user
+) {
   if (!user) {
     localStorage.removeItem(
       AUTH_USER_KEY
@@ -98,19 +121,26 @@ export function clearAuthSession() {
   );
 }
 
+function normalizePath(path) {
+  return String(path || "")
+    .trim()
+    .replace(/^\/+/, "");
+}
+
 function buildUrl(
   path,
   query = {}
 ) {
-  const cleanPath = String(
-    path || ""
-  ).replace(/^\/+/, "");
+  const cleanPath =
+    normalizePath(path);
 
   const url = new URL(
     `${API_BASE_URL}/${cleanPath}`
   );
 
-  Object.entries(query).forEach(
+  Object.entries(
+    query || {}
+  ).forEach(
     ([key, value]) => {
       if (
         value === undefined ||
@@ -120,13 +150,39 @@ function buildUrl(
         return;
       }
 
-      if (Array.isArray(value)) {
-        value.forEach((item) => {
-          url.searchParams.append(
-            key,
-            String(item)
-          );
-        });
+      if (
+        Array.isArray(value)
+      ) {
+        value.forEach(
+          (item) => {
+            if (
+              item === undefined ||
+              item === null ||
+              item === ""
+            ) {
+              return;
+            }
+
+            url.searchParams.append(
+              key,
+              String(item)
+            );
+          }
+        );
+
+        return;
+      }
+
+      if (
+        typeof value ===
+        "boolean"
+      ) {
+        url.searchParams.set(
+          key,
+          value
+            ? "true"
+            : "false"
+        );
 
         return;
       }
@@ -154,53 +210,122 @@ async function parseResponse(
       "application/json"
     )
   ) {
-    return response.json();
+    try {
+      return await response.json();
+    } catch {
+      return {};
+    }
   }
 
   const text =
     await response.text();
 
   return text
-    ? { message: text }
+    ? {
+        message: text,
+      }
     : {};
 }
 
-async function refreshAccessToken() {
+function createApiError(
+  response,
+  payload
+) {
+  const message =
+    payload?.message ||
+    payload?.error ||
+    payload?.details?.message ||
+    `API request failed with status ${response.status}.`;
+
+  const error =
+    new Error(message);
+
+  error.name =
+    "ApiError";
+
+  error.status =
+    response.status;
+
+  error.code =
+    payload?.code ||
+    payload?.errorCode ||
+    null;
+
+  error.details =
+    payload?.details ||
+    null;
+
+  error.payload =
+    payload;
+
+  return error;
+}
+
+function createNetworkError(
+  originalError
+) {
+  const error =
+    new Error(
+      `Unable to connect to the Angelbird API at ${API_BASE_URL}. Confirm that the backend is deployed and running.`
+    );
+
+  error.name =
+    "NetworkError";
+
+  error.code =
+    "NETWORK_ERROR";
+
+  error.cause =
+    originalError;
+
+  return error;
+}
+
+async function performRefreshToken() {
   const refreshToken =
     getRefreshToken();
 
   if (!refreshToken) {
+    clearAuthSession();
+
     return null;
   }
 
   try {
-    const response = await fetch(
-      buildUrl("/auth/refresh"),
-      {
-        method: "POST",
+    const response =
+      await fetch(
+        buildUrl(
+          "/auth/refresh"
+        ),
+        {
+          method: "POST",
 
-        headers: {
-          Accept:
-            "application/json",
+          headers: {
+            Accept:
+              "application/json",
 
-          "Content-Type":
-            "application/json",
-        },
+            "Content-Type":
+              "application/json",
+          },
 
-        body: JSON.stringify({
-          refreshToken,
-        }),
-      }
-    );
+          body:
+            JSON.stringify({
+              refreshToken,
+            }),
+        }
+      );
 
     const payload =
-      await parseResponse(response);
+      await parseResponse(
+        response
+      );
 
     if (
       !response.ok ||
       !payload?.data?.session
     ) {
       clearAuthSession();
+
       return null;
     }
 
@@ -208,12 +333,111 @@ async function refreshAccessToken() {
       payload.data
     );
 
-    return payload.data.session
-      .accessToken;
+    return (
+      payload.data.session
+        ?.accessToken ||
+      payload.data.session
+        ?.access_token ||
+      null
+    );
   } catch {
     clearAuthSession();
+
     return null;
   }
+}
+
+async function refreshAccessToken() {
+  if (!refreshPromise) {
+    refreshPromise =
+      performRefreshToken()
+        .finally(() => {
+          refreshPromise =
+            null;
+        });
+  }
+
+  return refreshPromise;
+}
+
+function prepareRequestBody(
+  body,
+  requestHeaders
+) {
+  if (
+    body === undefined ||
+    body === null
+  ) {
+    return undefined;
+  }
+
+  if (
+    body instanceof FormData
+  ) {
+    /*
+     * Browser automatically adds:
+     * multipart/form-data; boundary=...
+     *
+     * Never set Content-Type manually
+     * for FormData.
+     */
+    delete requestHeaders[
+      "Content-Type"
+    ];
+
+    delete requestHeaders[
+      "content-type"
+    ];
+
+    return body;
+  }
+
+  if (
+    body instanceof Blob ||
+    body instanceof ArrayBuffer ||
+    ArrayBuffer.isView(body)
+  ) {
+    return body;
+  }
+
+  if (
+    typeof body ===
+    "string"
+  ) {
+    if (
+      !requestHeaders[
+        "Content-Type"
+      ] &&
+      !requestHeaders[
+        "content-type"
+      ]
+    ) {
+      requestHeaders[
+        "Content-Type"
+      ] =
+        "text/plain;charset=UTF-8";
+    }
+
+    return body;
+  }
+
+  if (
+    !requestHeaders[
+      "Content-Type"
+    ] &&
+    !requestHeaders[
+      "content-type"
+    ]
+  ) {
+    requestHeaders[
+      "Content-Type"
+    ] =
+      "application/json";
+  }
+
+  return JSON.stringify(
+    body
+  );
 }
 
 export async function apiRequest(
@@ -228,68 +452,98 @@ export async function apiRequest(
     auth = true,
     signal,
     retry = true,
+    credentials,
+    cache,
   } = options;
 
+  const normalizedMethod =
+    String(method || "GET")
+      .toUpperCase();
+
   const requestHeaders = {
-    Accept: "application/json",
+    Accept:
+      "application/json",
     ...headers,
   };
 
   const token =
     getAccessToken();
 
-  if (auth && token) {
+  if (
+    auth &&
+    token &&
+    !requestHeaders.Authorization &&
+    !requestHeaders.authorization
+  ) {
     requestHeaders.Authorization =
       `Bearer ${token}`;
   }
 
-  let requestBody = body;
-
-  if (
-    body !== undefined &&
-    body !== null &&
-    !(body instanceof FormData)
-  ) {
-    requestHeaders[
-      "Content-Type"
-    ] = "application/json";
-
-    requestBody =
-      JSON.stringify(body);
-  }
+  const requestBody =
+    prepareRequestBody(
+      body,
+      requestHeaders
+    );
 
   let response;
 
   try {
-    response = await fetch(
-      buildUrl(path, query),
-      {
-        method,
-        headers:
-          requestHeaders,
-        body: requestBody,
-        signal,
-      }
-    );
+    response =
+      await fetch(
+        buildUrl(
+          path,
+          query
+        ),
+        {
+          method:
+            normalizedMethod,
+
+          headers:
+            requestHeaders,
+
+          body:
+            ["GET", "HEAD"].includes(
+              normalizedMethod
+            )
+              ? undefined
+              : requestBody,
+
+          signal,
+
+          /*
+           * Current authentication uses
+           * localStorage Bearer tokens.
+           *
+           * "include" also allows cookies
+           * if backend uses them later.
+           */
+          credentials:
+            credentials ||
+            "include",
+
+          cache:
+            cache ||
+            "no-store",
+        }
+      );
   } catch (error) {
     if (
-      error.name ===
+      error?.name ===
       "AbortError"
     ) {
       throw error;
     }
 
-    const networkError =
-      new Error(
-        "Unable to connect to the Angelbird API. Confirm that the backend is running."
-      );
-
-    networkError.code =
-      "NETWORK_ERROR";
-
-    throw networkError;
+    throw createNetworkError(
+      error
+    );
   }
 
+  /*
+   * Access token expired:
+   * use refresh token once, then retry
+   * the original request.
+   */
   if (
     response.status === 401 &&
     auth &&
@@ -299,41 +553,36 @@ export async function apiRequest(
       await refreshAccessToken();
 
     if (newAccessToken) {
-      return apiRequest(path, {
-        ...options,
-        retry: false,
+      return apiRequest(
+        path,
+        {
+          ...options,
 
-        headers: {
-          ...headers,
+          retry: false,
 
-          Authorization:
-            `Bearer ${newAccessToken}`,
-        },
-      });
+          headers: {
+            ...headers,
+
+            Authorization:
+              `Bearer ${newAccessToken}`,
+          },
+        }
+      );
     }
 
     clearAuthSession();
   }
 
   const payload =
-    await parseResponse(response);
-
-  if (!response.ok) {
-    const error = new Error(
-      payload?.message ||
-        `API request failed with status ${response.status}.`
+    await parseResponse(
+      response
     );
 
-    error.status =
-      response.status;
-
-    error.code =
-      payload?.code || null;
-
-    error.details =
-      payload?.details || null;
-
-    throw error;
+  if (!response.ok) {
+    throw createApiError(
+      response,
+      payload
+    );
   }
 
   return payload;
@@ -343,10 +592,13 @@ export function apiGet(
   path,
   options = {}
 ) {
-  return apiRequest(path, {
-    ...options,
-    method: "GET",
-  });
+  return apiRequest(
+    path,
+    {
+      ...options,
+      method: "GET",
+    }
+  );
 }
 
 export function apiPost(
@@ -354,11 +606,29 @@ export function apiPost(
   body,
   options = {}
 ) {
-  return apiRequest(path, {
-    ...options,
-    method: "POST",
-    body,
-  });
+  return apiRequest(
+    path,
+    {
+      ...options,
+      method: "POST",
+      body,
+    }
+  );
+}
+
+export function apiPut(
+  path,
+  body,
+  options = {}
+) {
+  return apiRequest(
+    path,
+    {
+      ...options,
+      method: "PUT",
+      body,
+    }
+  );
 }
 
 export function apiPatch(
@@ -366,21 +636,35 @@ export function apiPatch(
   body,
   options = {}
 ) {
-  return apiRequest(path, {
-    ...options,
-    method: "PATCH",
-    body,
-  });
+  return apiRequest(
+    path,
+    {
+      ...options,
+      method: "PATCH",
+      body,
+    }
+  );
 }
 
 export function apiDelete(
   path,
   options = {}
 ) {
-  return apiRequest(path, {
-    ...options,
-    method: "DELETE",
-  });
+  const {
+    body,
+    ...rest
+  } = options;
+
+  return apiRequest(
+    path,
+    {
+      ...rest,
+      method: "DELETE",
+      body,
+    }
+  );
 }
 
-export { API_BASE_URL };
+export {
+  API_BASE_URL,
+};

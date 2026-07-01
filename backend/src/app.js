@@ -2,91 +2,87 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import rateLimit from "express-rate-limit";
 
-import {
-  env,
-} from "./config/env.js";
-
-import authRoutes from "./routes/auth.routes.js";
-import healthRoutes from "./routes/health.routes.js";
 import homeRoutes from "./routes/home.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import reportsRoutes from "./routes/reports.routes.js";
-import reportingPeriodsRoutes from "./routes/reportingPeriods.routes.js";
-import settingsRoutes from "./routes/settings.routes.js";
 import importsRoutes from "./routes/imports.routes.js";
 import dataManagementRoutes from "./routes/dataManagement.routes.js";
+import reportingPeriodsRoutes from "./routes/reportingPeriods.routes.js";
+import settingsRoutes from "./routes/settings.routes.js";
 import aiSatisfactionRoutes from "./routes/aiSatisfaction.routes.js";
 
-import {
-  errorHandler,
-  notFoundHandler,
-} from "./middleware/errorHandler.js";
+/*
+ * Apne existing auth routes ya doosre routes hon
+ * to un imports ko bhi yahan retain karna.
+ */
 
 const app = express();
 
-app.disable("x-powered-by");
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "https://reportangelbird.mahimediasolutions.com",
+];
 
-app.use(
-  helmet({
-    crossOriginResourcePolicy: {
-      policy: "cross-origin",
-    },
-  })
-);
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.push(
+    ...String(process.env.FRONTEND_URL)
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean)
+  );
+}
 
-const allowedOrigins =
-  String(
-    env.FRONTEND_URL || ""
-  )
-    .split(",")
-    .map((origin) =>
-      origin.trim()
-    )
-    .filter(Boolean);
+app.set("trust proxy", 1);
+
+app.use(helmet());
 
 app.use(
   cors({
     origin(origin, callback) {
+      /*
+       * Requests without Origin include:
+       * curl, Postman, server-to-server requests
+       */
       if (!origin) {
-        return callback(
-          null,
-          true
-        );
+        callback(null, true);
+        return;
       }
 
-      if (
-        allowedOrigins.includes(
-          origin
-        )
-      ) {
-        return callback(
-          null,
-          true
-        );
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
       }
 
-      return callback(
+      callback(
         new Error(
-          `CORS blocked origin: ${origin}`
+          `CORS blocked request from origin: ${origin}`
         )
       );
     },
 
     credentials: true,
+
+    methods: [
+      "GET",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "OPTIONS",
+    ],
+
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-API-Key",
+      "Accept",
+    ],
   })
 );
 
-app.use(
-  rateLimit({
-    windowMs:
-      15 * 60 * 1000,
-    limit: 500,
-    standardHeaders: true,
-    legacyHeaders: false,
-  })
-);
+app.options("*", cors());
 
 app.use(
   express.json({
@@ -102,35 +98,40 @@ app.use(
 );
 
 if (
-  env.NODE_ENV !== "test"
+  process.env.NODE_ENV !== "test"
 ) {
-  app.use(
-    morgan("dev")
-  );
+  app.use(morgan("dev"));
 }
 
-app.get(
-  "/",
-  (request, response) => {
-    response.json({
-      success: true,
-      message:
-        "Angelbird Analytics API",
-      version: "1.0.0",
-    });
-  }
-);
+/*
+ * Root route
+ */
+app.get("/", (request, response) => {
+  response.status(200).json({
+    success: true,
+    message: "Angelbird Analysis API is running.",
+    environment:
+      process.env.NODE_ENV || "development",
+    timestamp: new Date().toISOString(),
+  });
+});
 
-app.use(
-  "/api/health",
-  healthRoutes
-);
+/*
+ * Health endpoint
+ */
+app.get("/api/health", async (request, response) => {
+  response.status(200).json({
+    success: true,
+    message: "Angelbird Analysis API is healthy.",
+    environment:
+      process.env.NODE_ENV || "development",
+    timestamp: new Date().toISOString(),
+  });
+});
 
-app.use(
-  "/api/auth",
-  authRoutes
-);
-
+/*
+ * API routes
+ */
 app.use(
   "/api/home",
   homeRoutes
@@ -144,11 +145,6 @@ app.use(
 app.use(
   "/api/reports",
   reportsRoutes
-);
-
-app.use(
-  "/api/ai/satisfaction",
-  aiSatisfactionRoutes
 );
 
 app.use(
@@ -171,7 +167,81 @@ app.use(
   settingsRoutes
 );
 
-app.use(notFoundHandler);
-app.use(errorHandler);
+app.use(
+  "/api/ai/satisfaction",
+  aiSatisfactionRoutes
+);
+
+/*
+ * API 404
+ */
+app.use((request, response) => {
+  response.status(404).json({
+    success: false,
+    message: `Route not found: ${request.method} ${request.originalUrl}`,
+  });
+});
+
+/*
+ * Central error handler
+ */
+app.use(
+  (
+    error,
+    request,
+    response,
+    next
+  ) => {
+    console.error("API Error:", {
+      message: error.message,
+      stack: error.stack,
+      status:
+        error.statusCode ||
+        error.status ||
+        500,
+      method: request.method,
+      path: request.originalUrl,
+    });
+
+    const statusCode =
+      Number(
+        error.statusCode ||
+          error.status
+      ) || 500;
+
+    let message =
+      error.message ||
+      "Internal server error.";
+
+    if (
+      error?.status === 429 ||
+      error?.code ===
+        "insufficient_quota" ||
+      error?.error?.code ===
+        "insufficient_quota"
+    ) {
+      message =
+        "AI analysis is unavailable because the OpenAI API project has no available quota.";
+
+      return response.status(503).json({
+        success: false,
+        message,
+        code: "AI_QUOTA_UNAVAILABLE",
+      });
+    }
+
+    response.status(statusCode).json({
+      success: false,
+      message,
+
+      ...(process.env.NODE_ENV !==
+      "production"
+        ? {
+            stack: error.stack,
+          }
+        : {}),
+    });
+  }
+);
 
 export default app;
