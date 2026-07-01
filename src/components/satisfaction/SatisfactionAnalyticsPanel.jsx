@@ -70,13 +70,13 @@ export default function SatisfactionAnalyticsPanel({
           type={chartSettings.satisfactionCommentChart || "bar"}
         />
 
-        <ChartPanel
+        {/* <ChartPanel
           className="xl:col-span-2"
           chartId={`${prefix}_satisfaction_monthly_trend`}
           title="Monthly Satisfaction Responses"
           data={analytics.monthlySummary}
           type="area"
-        />
+        /> */}
 
         {showTables ? (
           <>

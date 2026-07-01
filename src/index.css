@@ -11,26 +11,50 @@
   --text-color: #2f3d46;
 }
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
 html {
+  min-width: 320px;
   scroll-behavior: smooth;
 }
 
 body {
+  min-width: 320px;
   margin: 0;
+  overflow-x: hidden;
   background: #ffffff;
   color: var(--text-color);
   font-family: Inter, Arial, sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 button,
 input,
 select,
 textarea {
-  font-family: inherit;
+  min-width: 0;
+  font: inherit;
+}
+
+button,
+label,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+img,
+svg,
+canvas {
+  max-width: 100%;
+}
+
+table {
+  border-spacing: 0;
 }
 
 ::selection {
@@ -38,66 +62,24 @@ textarea {
   color: #111827;
 }
 
+/* -------------------------------------------------------
+   Layout
+------------------------------------------------------- */
+
 .angel-container {
   @apply mx-auto w-full max-w-[1520px] px-4 sm:px-6 lg:px-8;
 }
 
 .angel-card {
-  @apply rounded-[28px] border border-slate-200 bg-white shadow-soft;
+  @apply min-w-0 rounded-[28px] border border-slate-200 bg-white shadow-soft;
 }
 
 .angel-section {
-  @apply rounded-[34px] border border-slate-200 bg-white shadow-soft;
+  @apply min-w-0 rounded-[34px] border border-slate-200 bg-white shadow-soft;
 }
 
 .angel-soft-card {
-  @apply rounded-[28px] border border-slate-200 bg-[#f6f8f8];
-}
-
-.angel-input {
-  @apply w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-500;
-}
-
-.angel-label {
-  @apply mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-500;
-}
-
-.angel-btn {
-  @apply inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-black transition;
-}
-
-.angel-btn-dark {
-  background: var(--header-color);
-  color: white;
-}
-
-.angel-btn-dark:hover {
-  filter: brightness(0.95);
-}
-
-.angel-btn-lime {
-  background: var(--accent-color);
-  color: var(--text-color);
-}
-
-.angel-btn-lime:hover {
-  filter: brightness(0.96);
-}
-
-.angel-mini-label {
-  @apply text-[11px] font-black uppercase tracking-[0.24em] text-slate-500;
-}
-
-.angel-title {
-  @apply text-3xl font-black tracking-[-0.04em] text-slate-900 md:text-5xl;
-}
-
-.angel-page-title {
-  @apply text-3xl font-black tracking-[-0.04em] text-slate-900 md:text-4xl;
-}
-
-.angel-muted {
-  @apply text-sm leading-6 text-slate-500;
+  @apply min-w-0 rounded-[28px] border border-slate-200 bg-[#f6f8f8];
 }
 
 .angel-grid-bg {
@@ -107,16 +89,121 @@ textarea {
   background-size: 42px 42px;
 }
 
-.pdf-exporting {
-  background: #ffffff !important;
-  color: #0f172a !important;
-  overflow: visible !important;
-  height: auto !important;
-  max-height: none !important;
+/* -------------------------------------------------------
+   Typography
+------------------------------------------------------- */
+
+.angel-mini-label {
+  @apply break-words text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 sm:text-[11px] sm:tracking-[0.24em];
 }
 
-.pdf-exporting * {
+.angel-title {
+  @apply break-words text-3xl font-black leading-tight tracking-[-0.04em] text-slate-950 md:text-5xl;
+}
+
+.angel-page-title {
+  @apply break-words text-3xl font-black leading-tight tracking-[-0.04em] text-slate-950 md:text-4xl;
+}
+
+.angel-muted {
+  @apply break-words text-sm leading-6 text-slate-500;
+}
+
+/* -------------------------------------------------------
+   Form Controls
+------------------------------------------------------- */
+
+.angel-label {
+  @apply mb-2 block break-words text-xs font-black uppercase tracking-[0.16em] text-slate-500;
+}
+
+.angel-input {
+  @apply min-h-12 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition;
+}
+
+.angel-input:hover {
+  border-color: #cbd5e1;
+}
+
+.angel-input:focus {
+  border-color: #64748b;
+  box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.1);
+}
+
+/* -------------------------------------------------------
+   Buttons
+------------------------------------------------------- */
+
+.angel-btn {
+  @apply inline-flex min-h-12 min-w-0 items-center justify-center rounded-xl px-5 py-3 text-center text-sm font-black leading-5 transition;
+}
+
+.angel-btn span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.angel-btn-dark {
+  background: var(--header-color);
+  color: #ffffff;
+}
+
+.angel-btn-dark:hover {
+  filter: brightness(0.94);
+  transform: translateY(-1px);
+}
+
+.angel-btn-lime {
+  background: var(--accent-color);
+  color: #111827;
+}
+
+.angel-btn-lime:hover {
+  filter: brightness(0.96);
+  transform: translateY(-1px);
+}
+
+/* -------------------------------------------------------
+   Responsive Safety
+------------------------------------------------------- */
+
+.min-w-0 {
+  min-width: 0;
+}
+
+.break-safe {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+@media (max-width: 640px) {
+  .angel-card,
+  .angel-section,
+  .angel-soft-card {
+    border-radius: 22px;
+  }
+
+  .angel-btn {
+    width: 100%;
+  }
+}
+
+/* -------------------------------------------------------
+   PDF Export
+------------------------------------------------------- */
+
+.pdf-exporting {
+  height: auto !important;
+  max-height: none !important;
   overflow: visible !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
 }
 
 .pdf-exporting .no-print,
@@ -129,12 +216,13 @@ textarea {
 .pdf-exporting .recharts-responsive-container,
 .pdf-exporting .recharts-surface,
 .pdf-exporting svg {
-  overflow: visible !important;
   max-width: none !important;
   max-height: none !important;
+  overflow: visible !important;
 }
 
-.pdf-exporting .overflow-x-auto {
+.pdf-exporting .overflow-x-auto,
+.pdf-exporting .table-scroll {
   overflow: visible !important;
 }
 
@@ -150,6 +238,10 @@ textarea {
   page-break-before: always;
 }
 
+/* -------------------------------------------------------
+   Print
+------------------------------------------------------- */
+
 @media print {
   @page {
     size: A4;
@@ -158,8 +250,10 @@ textarea {
 
   html,
   body {
-    background: #ffffff !important;
+    width: 100% !important;
+    min-width: 0 !important;
     overflow: visible !important;
+    background: #ffffff !important;
   }
 
   header,
@@ -173,11 +267,12 @@ textarea {
 
   main {
     width: 100% !important;
+    min-width: 0 !important;
   }
 
   .angel-container {
-    max-width: none !important;
     width: 100% !important;
+    max-width: none !important;
     padding: 0 !important;
   }
 
@@ -187,18 +282,18 @@ textarea {
   #angelbird-report-export {
     width: 100% !important;
     max-width: none !important;
+    overflow: visible !important;
     background: #ffffff !important;
     box-shadow: none !important;
-    overflow: visible !important;
     padding: 0 !important;
   }
 
   .angel-card,
   .angel-section,
   .pdf-export-section {
-    box-shadow: none !important;
     break-inside: avoid;
     page-break-inside: avoid;
+    box-shadow: none !important;
   }
 
   .recharts-wrapper,
@@ -208,17 +303,21 @@ textarea {
     overflow: visible !important;
   }
 
-  .overflow-x-auto {
+  .overflow-x-auto,
+  .table-scroll {
     overflow: visible !important;
   }
 
   table {
-    page-break-inside: auto;
     width: 100% !important;
+    page-break-inside: auto;
   }
 
   tr {
     page-break-inside: avoid;
     page-break-after: auto;
   }
+}
+[id] {
+  scroll-margin-top: 110px;
 }

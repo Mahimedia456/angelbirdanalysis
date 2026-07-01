@@ -1,16 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Wand2 } from "lucide-react";
+import {
+  CheckCircle2,
+  Columns3,
+  Wand2,
+} from "lucide-react";
+
 import {
   applyTicketMapping,
   detectTicketMapping,
   TICKET_FIELDS,
 } from "../../utils/ticketMapper";
+
 import {
   saveTicketMapping,
   saveTicketsData,
 } from "../../utils/storage";
 
-export default function TicketColumnMapper({ rawRows = [], onMapped }) {
+export default function TicketColumnMapper({
+  rawRows = [],
+  onMapped,
+}) {
   const columns = useMemo(() => {
     if (!rawRows.length) return [];
     return Object.keys(rawRows[0]);
@@ -41,7 +50,10 @@ export default function TicketColumnMapper({ rawRows = [], onMapped }) {
   }
 
   function applyMapping() {
-    const mappedTickets = applyTicketMapping(rawRows, mapping);
+    const mappedTickets = applyTicketMapping(
+      rawRows,
+      mapping
+    );
 
     saveTicketMapping(mapping);
     saveTicketsData(mappedTickets);
@@ -50,48 +62,71 @@ export default function TicketColumnMapper({ rawRows = [], onMapped }) {
   }
 
   return (
-    <div className="angel-card p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <p className="angel-mini-label">Ticket Column Mapping</p>
+    <section className="angel-card p-6 lg:p-7">
+      <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+        <div className="flex min-w-0 items-start gap-4">
+          <div
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-slate-950"
+            style={{ background: "var(--accent-color)" }}
+          >
+            <Columns3 size={22} />
+          </div>
 
-          <h3 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-900">
-            Auto-detect and map ticket CSV columns.
-          </h3>
+          <div className="min-w-0">
+            <p className="angel-mini-label">
+              Ticket Column Mapping
+            </p>
 
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-            This should map your real columns: TSE, Ticket number, Region,
-            Submitted, Date, Product 1, Product 2, Ticket Subject, Support
-            Category, Product Category and Procedure.
-          </p>
+            <h3 className="mt-2 break-words text-2xl font-black leading-tight tracking-[-0.04em] text-slate-950">
+              Review ticket field detection before applying the mapping.
+            </h3>
+
+            <p className="mt-3 max-w-4xl break-words text-sm leading-6 text-slate-500">
+              Confirm TSE, ticket number, region, submitted status, date,
+              products, subject, support category, product category and
+              procedure.
+            </p>
+          </div>
         </div>
 
-        <div className="flex flex-wrap gap-3">
-          <button onClick={autoDetect} className="angel-btn angel-btn-dark gap-2">
+        <div className="flex w-full flex-wrap gap-3 xl:w-auto xl:justify-end">
+          <button
+            type="button"
+            onClick={autoDetect}
+            className="angel-btn angel-btn-dark flex-1 gap-2 sm:flex-none"
+          >
             <Wand2 size={18} />
             Auto Detect
           </button>
 
-          <button onClick={applyMapping} className="angel-btn angel-btn-lime gap-2">
+          <button
+            type="button"
+            onClick={applyMapping}
+            className="angel-btn angel-btn-lime flex-1 gap-2 sm:flex-none"
+          >
             <CheckCircle2 size={18} />
-            Apply Ticket Mapping
+            Apply Mapping
           </button>
         </div>
       </div>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {TICKET_FIELDS.map((field) => (
-          <div key={field.key}>
-            <label className="angel-label">
-              {field.label} {field.required ? "*" : ""}
+          <div key={field.key} className="min-w-0">
+            <label className="angel-label break-words">
+              {field.label}
+              {field.required ? " *" : ""}
             </label>
 
             <select
-              className="angel-input"
+              className="angel-input min-w-0"
               value={mapping[field.key] || ""}
-              onChange={(event) => updateMapping(field.key, event.target.value)}
+              onChange={(event) =>
+                updateMapping(field.key, event.target.value)
+              }
             >
               <option value="">Do not map</option>
+
               {columns.map((column) => (
                 <option key={column} value={column}>
                   {column.replaceAll("_", " ")}
@@ -102,9 +137,18 @@ export default function TicketColumnMapper({ rawRows = [], onMapped }) {
         ))}
       </div>
 
-      <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">
-        Ticket rows ready for mapping: <strong>{rawRows.length}</strong>
+      <div className="mt-6 flex flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm font-bold text-slate-600">
+          Ticket rows available for mapping
+        </p>
+
+        <span
+          className="w-fit rounded-full px-3 py-1.5 text-xs font-black text-slate-950"
+          style={{ background: "var(--accent-color)" }}
+        >
+          {rawRows.length} Rows
+        </span>
       </div>
-    </div>
+    </section>
   );
 }

@@ -1,21 +1,202 @@
-import { BarChart3, FileSpreadsheet, Palette, Upload } from "lucide-react";
-import { Link, NavLink } from "react-router-dom";
+import {
+  BarChart3,
+  Eye,
+  FileSpreadsheet,
+  Menu,
+  Palette,
+  Upload,
+  X,
+} from "lucide-react";
+
+import {
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  Link,
+  NavLink,
+} from "react-router-dom";
+
 import logo from "../../assets/logo.svg";
 
-const navItems = [
-  { label: "Upload", to: "/", icon: Upload },
-  { label: "Dashboard", to: "/dashboard", icon: BarChart3 },
-  { label: "Reports", to: "/reports", icon: FileSpreadsheet },
-  { label: "Settings", to: "/settings", icon: Palette },
-];
+import {
+  useAuth,
+} from "../../context/AuthContext";
+
+import {
+  canManageSettings,
+  canUploadData,
+  canViewDashboard,
+  canViewReports,
+} from "../../utils/permissions";
+
+import HeaderUserMenu from "./HeaderUserMenu";
+
+function NavigationLink({
+  item,
+  onClick,
+  mobile = false,
+}) {
+  const Icon = item.icon;
+
+  return (
+    <NavLink
+      to={item.to}
+      end={item.end}
+      onClick={onClick}
+      className={({
+        isActive,
+      }) =>
+        [
+          "inline-flex min-w-0 items-center gap-2 font-black transition",
+
+          mobile
+            ? "w-full rounded-2xl px-4 py-3 text-sm"
+            : "rounded-full px-4 py-2.5 text-sm",
+
+          isActive
+            ? "text-slate-950"
+            : mobile
+            ? "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+            : "text-slate-500 hover:bg-slate-100 hover:text-slate-950",
+        ].join(" ")
+      }
+      style={({
+        isActive,
+      }) =>
+        isActive
+          ? {
+              background:
+                "var(--accent-color)",
+            }
+          : undefined
+      }
+    >
+      <Icon
+        size={16}
+        className="shrink-0"
+      />
+
+      <span className="truncate">
+        {item.label}
+      </span>
+    </NavLink>
+  );
+}
 
 export default function Header() {
+  const {
+    user,
+  } = useAuth();
+
+  const [
+    mobileMenuOpen,
+    setMobileMenuOpen,
+  ] = useState(false);
+
+  const [
+    profileMenuOpen,
+    setProfileMenuOpen,
+  ] = useState(false);
+
+  const navItems =
+    useMemo(() => {
+      const items = [];
+
+      const uploadAllowed =
+        canUploadData(
+          user?.role
+        );
+
+      items.push({
+        label:
+          uploadAllowed
+            ? "Upload"
+            : "Overview",
+
+        to: "/",
+
+        icon:
+          uploadAllowed
+            ? Upload
+            : Eye,
+
+        end: true,
+      });
+
+      if (
+        canViewDashboard(
+          user?.role
+        )
+      ) {
+        items.push({
+          label: "Dashboard",
+          to: "/dashboard",
+          icon: BarChart3,
+        });
+      }
+
+      if (
+        canViewReports(
+          user?.role
+        )
+      ) {
+        items.push({
+          label: "Reports",
+          to: "/reports",
+          icon:
+            FileSpreadsheet,
+        });
+      }
+
+      if (
+        canManageSettings(
+          user?.role
+        )
+      ) {
+        items.push({
+          label: "Settings",
+          to: "/settings",
+          icon: Palette,
+        });
+      }
+
+      return items;
+    }, [user?.role]);
+
+  function closeMobileMenu() {
+    setMobileMenuOpen(
+      false
+    );
+  }
+
+  function closeProfileMenu() {
+    setProfileMenuOpen(
+      false
+    );
+  }
+
+  function toggleProfileMenu() {
+    setProfileMenuOpen(
+      (current) =>
+        !current
+    );
+  }
+
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
       <div className="angel-container">
-        <div className="flex h-[76px] items-center justify-between">
-          <Link to="/" className="flex items-center gap-4">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm">
+        <div className="flex min-h-[76px] items-center justify-between gap-4">
+          <Link
+            to="/"
+            onClick={() => {
+              closeMobileMenu();
+              closeProfileMenu();
+            }}
+            className="flex min-w-0 items-center gap-3 sm:gap-4"
+          >
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm">
               <img
                 src={logo}
                 alt="Angelbird"
@@ -23,52 +204,95 @@ export default function Header() {
               />
             </div>
 
-            <div>
-              <p className="text-[15px] font-black uppercase tracking-[0.28em] text-slate-800">
+            <div className="min-w-0">
+              <p className="truncate text-[13px] font-black uppercase tracking-[0.2em] text-slate-800 sm:text-[15px] sm:tracking-[0.28em]">
                 Angelbird Reporting
               </p>
 
-              <p className="mt-0.5 text-xs font-semibold text-slate-500">
+              <p className="mt-0.5 hidden truncate text-xs font-semibold text-slate-500 sm:block">
                 Ticket Analytics · Product Master
               </p>
             </div>
           </Link>
 
-          <nav className="hidden items-center gap-1 rounded-full border border-slate-200 bg-white p-1 shadow-sm md:flex">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <NavLink
+          <nav className="hidden shrink-0 items-center gap-1 rounded-full border border-slate-200 bg-white p-1 shadow-sm lg:flex">
+            {navItems.map(
+              (item) => (
+                <NavigationLink
                   key={item.to}
-                  to={item.to}
-                  className={({ isActive }) =>
-                    [
-                      "inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-black transition",
-                      isActive
-                        ? "text-slate-900"
-                        : "text-slate-500 hover:bg-slate-100 hover:text-slate-900",
-                    ].join(" ")
-                  }
-                  style={({ isActive }) =>
-                    isActive ? { background: "var(--accent-color)" } : undefined
-                  }
-                >
-                  <Icon size={16} />
-                  {item.label}
-                </NavLink>
-              );
-            })}
+                  item={item}
+                />
+              )
+            )}
           </nav>
 
-          <Link
-            to="/settings"
-            className="hidden rounded-full px-5 py-2.5 text-sm font-black text-white shadow-sm lg:inline-flex"
-            style={{ background: "var(--header-color)" }}
-          >
-            Customize
-          </Link>
+          <div className="flex shrink-0 items-center gap-2">
+            <HeaderUserMenu
+              open={
+                profileMenuOpen
+              }
+              onToggle={
+                toggleProfileMenu
+              }
+              onClose={
+                closeProfileMenu
+              }
+            />
+
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(
+                  (current) =>
+                    !current
+                );
+
+                closeProfileMenu();
+              }}
+              className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-100 lg:hidden"
+              aria-expanded={
+                mobileMenuOpen
+              }
+              aria-label="Toggle navigation menu"
+            >
+              {mobileMenuOpen ? (
+                <X size={20} />
+              ) : (
+                <Menu
+                  size={20}
+                />
+              )}
+            </button>
+          </div>
         </div>
+
+        {mobileMenuOpen ? (
+          <div className="border-t border-slate-200 pb-5 pt-4 lg:hidden">
+            <nav className="grid gap-2">
+              {navItems.map(
+                (item) => (
+                  <NavigationLink
+                    key={item.to}
+                    item={item}
+                    mobile
+                    onClick={
+                      closeMobileMenu
+                    }
+                  />
+                )
+              )}
+            </nav>
+
+            <div className="mt-4">
+              <HeaderUserMenu
+                compact
+                onClose={
+                  closeMobileMenu
+                }
+              />
+            </div>
+          </div>
+        ) : null}
       </div>
     </header>
   );
