@@ -5,6 +5,13 @@ import morgan from "morgan";
 
 import { env } from "./config/env.js";
 
+/*
+ * IMPORTANT:
+ * Auth route register hona lazmi hai because frontend calls:
+ * POST /api/auth/login
+ */
+import authRoutes from "./routes/auth.routes.js";
+
 import homeRoutes from "./routes/home.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import reportsRoutes from "./routes/reports.routes.js";
@@ -14,48 +21,34 @@ import reportingPeriodsRoutes from "./routes/reportingPeriods.routes.js";
 import settingsRoutes from "./routes/settings.routes.js";
 import aiSatisfactionRoutes from "./routes/aiSatisfaction.routes.js";
 
-/*
- * IMPORTANT:
- * Agar auth routes bhi project mein hain to unka existing
- * import aur app.use("/api/auth", authRoutes) retain karna.
- */
-
 const app = express();
+
+app.disable("x-powered-by");
+app.set("trust proxy", 1);
 
 const allowedOrigins = Array.from(
   new Set([
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "https://reportangelbird.mahimediasolutions.com",
+
     ...(Array.isArray(env.FRONTEND_URLS)
       ? env.FRONTEND_URLS
       : []),
   ])
 );
 
-app.disable("x-powered-by");
-app.set("trust proxy", 1);
+function isAllowedOrigin(origin) {
+  if (!origin) {
+    return true;
+  }
 
-app.use(
-  helmet({
-    crossOriginResourcePolicy: {
-      policy: "cross-origin",
-    },
-  })
-);
+  return allowedOrigins.includes(origin);
+}
 
 const corsOptions = {
   origin(origin, callback) {
-    /*
-     * Postman, curl, Vercel internal requests
-     * aur server-to-server calls mein Origin nahi hota.
-     */
-    if (!origin) {
-      callback(null, true);
-      return;
-    }
-
-    if (allowedOrigins.includes(origin)) {
+    if (isAllowedOrigin(origin)) {
       callback(null, true);
       return;
     }
@@ -70,6 +63,10 @@ const corsOptions = {
     callback(error);
   },
 
+  /*
+   * Frontend apiClient uses credentials: "include".
+   * Therefore Access-Control-Allow-Origin cannot be "*".
+   */
   credentials: true,
 
   methods: [
@@ -86,24 +83,41 @@ const corsOptions = {
     "Content-Type",
     "Authorization",
     "X-API-Key",
+    "Origin",
   ],
 
   exposedHeaders: [
     "Content-Length",
   ],
 
+  optionsSuccessStatus: 204,
+  preflightContinue: false,
   maxAge: 86400,
 };
 
+/*
+ * CORS must run before Helmet, JSON parser and all routes.
+ */
 app.use(cors(corsOptions));
 
 /*
- * Do not use this with Express 5:
- *
- * app.options("*", cors());
- *
- * Global cors middleware already handles OPTIONS requests.
+ * Explicit Express 5-compatible OPTIONS handler.
+ * Regex use ki gayi hai; app.options("*") use nahi karna.
  */
+app.options(
+  /^(.*)$/,
+  cors(corsOptions)
+);
+
+app.use(
+  helmet({
+    crossOriginResourcePolicy: {
+      policy: "cross-origin",
+    },
+
+    crossOriginEmbedderPolicy: false,
+  })
+);
 
 app.use(
   express.json({
@@ -124,28 +138,21 @@ if (env.NODE_ENV !== "test") {
 
 /*
  * Dependency-free root route.
- * Is route par database ya Supabase test mat chalao,
- * taake function basic boot check pass kare.
  */
 app.get("/", (request, response) => {
   response.status(200).json({
     success: true,
     message:
       "Angelbird Analysis API is running.",
-    environment:
-      env.NODE_ENV,
-    platform:
-      env.IS_VERCEL
-        ? "vercel"
-        : "local",
+    environment: env.NODE_ENV,
+    platform: env.IS_VERCEL
+      ? "vercel"
+      : "local",
     timestamp:
       new Date().toISOString(),
   });
 });
 
-/*
- * Basic server health.
- */
 app.get(
   "/api/health",
   (request, response) => {
@@ -153,12 +160,11 @@ app.get(
       success: true,
       message:
         "Angelbird Analysis API is healthy.",
-      environment:
-        env.NODE_ENV,
-      platform:
-        env.IS_VERCEL
-          ? "vercel"
-          : "local",
+      environment: env.NODE_ENV,
+      platform: env.IS_VERCEL
+        ? "vercel"
+        : "local",
+      allowedOrigins,
       timestamp:
         new Date().toISOString(),
     });
@@ -166,8 +172,13 @@ app.get(
 );
 
 /*
- * Registered API routes.
+ * Authentication route was missing previously.
  */
+app.use(
+  "/api/auth",
+  authRoutes
+);
+
 app.use(
   "/api/home",
   homeRoutes
@@ -209,14 +220,16 @@ app.use(
 );
 
 /*
- * API not-found handler.
+ * 404 handler.
  */
 app.use(
   (request, response) => {
     response.status(404).json({
       success: false,
+
       message:
         `Route not found: ${request.method} ${request.originalUrl}`,
+
       code:
         "ROUTE_NOT_FOUND",
     });
@@ -258,10 +271,42 @@ app.use(
         path:
           request.originalUrl,
 
+        origin:
+          request.headers.origin,
+
         stack:
           error?.stack,
       }
     );
+
+    /*
+     * Ensure even error responses carry
+     * the production CORS origin.
+     */
+    const requestOrigin =
+      request.headers.origin;
+
+    if (
+      requestOrigin &&
+      isAllowedOrigin(
+        requestOrigin
+      )
+    ) {
+      response.setHeader(
+        "Access-Control-Allow-Origin",
+        requestOrigin
+      );
+
+      response.setHeader(
+        "Access-Control-Allow-Credentials",
+        "true"
+      );
+
+      response.setHeader(
+        "Vary",
+        "Origin"
+      );
+    }
 
     if (
       error?.status === 429 ||
@@ -272,8 +317,10 @@ app.use(
     ) {
       response.status(503).json({
         success: false,
+
         message:
           "AI analysis is temporarily unavailable because the OpenAI API project has no available quota.",
+
         code:
           "AI_QUOTA_UNAVAILABLE",
       });
@@ -296,27 +343,27 @@ app.use(
       return;
     }
 
-    response.status(
-      statusCode
-    ).json({
-      success: false,
+    response
+      .status(statusCode)
+      .json({
+        success: false,
 
-      message:
-        error?.message ||
-        "Internal server error.",
+        message:
+          error?.message ||
+          "Internal server error.",
 
-      code:
-        error?.code ||
-        "INTERNAL_SERVER_ERROR",
+        code:
+          error?.code ||
+          "INTERNAL_SERVER_ERROR",
 
-      ...(env.NODE_ENV !==
-      "production"
-        ? {
-            stack:
-              error?.stack,
-          }
-        : {}),
-    });
+        ...(env.NODE_ENV !==
+        "production"
+          ? {
+              stack:
+                error?.stack,
+            }
+          : {}),
+      });
   }
 );
 
