@@ -165,74 +165,8 @@ function CompactStat({
   );
 }
 
-function ApiStatusBadge({
-  loading,
-  connected,
-}) {
-  if (loading) {
-    return (
-      <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-2 text-xs font-black text-slate-500">
-        <Loader2
-          size={14}
-          className="animate-spin"
-        />
 
-        Checking API
-      </span>
-    );
-  }
 
-  if (connected) {
-    return (
-      <span className="inline-flex items-center gap-2 rounded-full bg-lime-100 px-3 py-2 text-xs font-black text-lime-800">
-        <CheckCircle2
-          size={14}
-        />
-
-        Database Connected
-      </span>
-    );
-  }
-
-  return (
-    <span className="inline-flex items-center gap-2 rounded-full bg-red-100 px-3 py-2 text-xs font-black text-red-700">
-      <AlertCircle
-        size={14}
-      />
-
-      API Offline
-    </span>
-  );
-}
-
-function RoleBadge({
-  role,
-  uploadAllowed,
-}) {
-  return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 shadow-sm">
-      {uploadAllowed ? (
-        <UploadCloud
-          size={14}
-        />
-      ) : (
-        <Eye
-          size={14}
-        />
-      )}
-
-      {formatRoleName(role)}
-
-      <span className="text-slate-300">
-        ·
-      </span>
-
-      {uploadAllowed
-        ? "Upload Access"
-        : "View Only"}
-    </span>
-  );
-}
 
 function ImportStatusNotice({
   importState,
@@ -1159,23 +1093,7 @@ export default function HomePage() {
                   </span>
                 </div>
 
-                <ApiStatusBadge
-                  loading={
-                    overviewLoading
-                  }
-                  connected={
-                    apiConnected
-                  }
-                />
-
-                <RoleBadge
-                  role={
-                    user?.role
-                  }
-                  uploadAllowed={
-                    uploadAllowed
-                  }
-                />
+              
               </div>
 
               <h1 className="mt-5 max-w-[900px] text-[clamp(2.4rem,4.2vw,4.6rem)] font-extrabold leading-[0.98] tracking-[-0.05em] text-slate-950">

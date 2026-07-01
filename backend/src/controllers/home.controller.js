@@ -1,4 +1,10 @@
-import { supabaseAdmin } from "../config/supabase.js";
+import {
+  supabaseAdmin,
+} from "../config/supabase.js";
+
+import {
+  ensureCurrentReportingPeriod,
+} from "../services/reportingPeriods.service.js";
 
 async function getCount(
   tableName,
@@ -13,13 +19,18 @@ async function getCount(
       count: "exact",
       head: true,
     })
-    .eq("period_id", periodId);
+    .eq(
+      "period_id",
+      periodId
+    );
 
   if (error) {
     throw error;
   }
 
-  return Number(count || 0);
+  return Number(
+    count || 0
+  );
 }
 
 export async function getHomeOverview(
@@ -28,15 +39,36 @@ export async function getHomeOverview(
   next
 ) {
   try {
-    const requestedPeriodKey = String(
-      request.query.period || ""
-    ).trim();
+    /*
+     * Har Home overview request par current
+     * calendar month database mein ensure hoga.
+     *
+     * July start:
+     * 2026-07 automatically create
+     *
+     * January 2027 start:
+     * 2027-01 automatically create
+     */
+    const currentPeriod =
+      await ensureCurrentReportingPeriod({
+        createdBy:
+          request.profile?.id ||
+          null,
+      });
+
+    const requestedPeriodKey =
+      String(
+        request.query.period ||
+          ""
+      ).trim();
 
     const {
       data: periods,
       error: periodsError,
     } = await supabaseAdmin
-      .from("reporting_periods")
+      .from(
+        "reporting_periods"
+      )
       .select(`
         id,
         report_year,
@@ -47,24 +79,43 @@ export async function getHomeOverview(
         period_end,
         status
       `)
-      .order("report_year", {
-        ascending: false,
-      })
-      .order("report_month", {
-        ascending: false,
-      });
+      .order(
+        "report_year",
+        {
+          ascending: false,
+        }
+      )
+      .order(
+        "report_month",
+        {
+          ascending: false,
+        }
+      );
 
     if (periodsError) {
       throw periodsError;
     }
 
-    const safePeriods = periods || [];
+    const safePeriods =
+      periods || [];
 
+    /*
+     * Selection priority:
+     *
+     * 1. Valid requested period
+     * 2. Current calendar period
+     * 3. Latest available period
+     */
     const selectedPeriod =
       safePeriods.find(
         (period) =>
           period.period_key ===
           requestedPeriodKey
+      ) ||
+      safePeriods.find(
+        (period) =>
+          period.period_key ===
+          currentPeriod?.period_key
       ) ||
       safePeriods[0] ||
       null;
@@ -74,8 +125,11 @@ export async function getHomeOverview(
         success: true,
 
         data: {
-          selectedPeriod: null,
+          selectedPeriod:
+            null,
+
           periods: [],
+
           periodSummary: {
             ticketCount: 0,
             productCount: 0,
@@ -118,12 +172,17 @@ export async function getHomeOverview(
 
       data: {
         selectedPeriod,
-        periods: safePeriods,
+
+        periods:
+          safePeriods,
 
         periodSummary: {
-          periodId: selectedPeriod.id,
+          periodId:
+            selectedPeriod.id,
+
           periodKey:
             selectedPeriod.period_key,
+
           periodName:
             selectedPeriod.period_name,
 

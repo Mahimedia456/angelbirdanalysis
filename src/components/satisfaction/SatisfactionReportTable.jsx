@@ -455,7 +455,7 @@ function AiAnalysisModal({
                 />
 
                 <p className="mt-4 font-black">
-                  AI is analyzing the response
+                 Mahimedia System analyzing the response
                 </p>
 
                 <p className="mt-2 text-sm">
@@ -827,7 +827,7 @@ export default function SatisfactionReportTable({
 
                 {!preview ? (
                   <th className="min-w-[190px] px-4 py-4 font-black">
-                    AI Analysis
+                    Analysis
                   </th>
                 ) : null}
               </tr>
@@ -940,13 +940,13 @@ export default function SatisfactionReportTable({
                                   row
                                 )
                               }
-                              className="no-print no-export inline-flex items-center gap-2 rounded-xl bg-violet-100 px-4 py-2.5 text-xs font-black text-violet-800 transition hover:bg-violet-200 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                              className="no-print no-export inline-flex items-center gap-2 rounded-xl bg-black px-4 py-2.5 text-xs font-black text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
                             >
                               <BrainCircuit
                                 size={16}
                               />
 
-                              View AI Summary
+                              View Summary
                             </button>
                           </td>
                         ) : null}
