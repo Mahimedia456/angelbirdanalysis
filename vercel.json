@@ -11,7 +11,7 @@
       "destination": "https://angelbirdanalysis-api.vercel.app/api/:path*"
     },
     {
-      "source": "/((?!api/).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
