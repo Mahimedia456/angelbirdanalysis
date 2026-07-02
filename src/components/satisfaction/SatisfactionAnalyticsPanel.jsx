@@ -39,7 +39,7 @@ export default function SatisfactionAnalyticsPanel({
           }
         />
 
-        <ChartPanel
+        {/* <ChartPanel
           className="xl:col-span-2"
           chartId={`${prefix}_satisfaction_daily_trend`}
           title="Date-wise Satisfaction Responses"
@@ -49,7 +49,7 @@ export default function SatisfactionAnalyticsPanel({
               ? chartSettings.reportSatisfactionDailyChart || "line"
               : chartSettings.satisfactionDailyChart || "line"
           }
-        />
+        /> */}
 
         <ChartPanel
           className="xl:col-span-2"

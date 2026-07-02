@@ -3,7 +3,7 @@ export default function SummaryTable({ title, data = [] }) {
     <div className="angel-card overflow-hidden">
       <div className="border-b border-slate-200 p-5">
         <h3 className="text-lg font-black text-slate-900">{title}</h3>
-        <p className="mt-1 text-sm text-slate-500">Top summary records.</p>
+        <p className="mt-1 text-sm text-slate-1000">Top summary records.</p>
       </div>
 
       <div className="overflow-auto">

@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 
 import ProductFilters from "../components/products/ProductFilters";
-import ProductCategoryCards from "../components/products/ProductCategoryCards";
 
 import TicketFilters from "../components/tickets/TicketFilters";
 import TicketKpiCards from "../components/tickets/TicketKpiCards";
@@ -794,12 +793,7 @@ export default function DashboardPage() {
                 </p>
               </section>
 
-              <ProductCategoryCards
-                categorySummary={
-                  productAnalytics
-                    .categorySummary
-                }
-              />
+         
 
               <section className="grid gap-6 xl:grid-cols-2">
                 <ChartPanel
