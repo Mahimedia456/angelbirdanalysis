@@ -1680,7 +1680,7 @@ export default function HomePage() {
             }
           />
 
-          <section className="space-y-6">
+          {/* <section className="space-y-6">
             <div>
               <p className="angel-mini-label">
                 Imported Data Preview
@@ -1752,7 +1752,7 @@ export default function HomePage() {
               }
               preview
             />
-          </section>
+          </section> */}
         </>
       ) : null}
     </div>
