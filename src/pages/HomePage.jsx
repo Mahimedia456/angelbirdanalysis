@@ -1503,7 +1503,6 @@ export default function HomePage() {
 
       {uploadAllowed ? (
         <>
-          <ProductTemplateDownload />
 
           <section
             id="data-import"
