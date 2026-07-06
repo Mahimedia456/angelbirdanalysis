@@ -1347,7 +1347,7 @@ export default function ReportsPage() {
             </div>
 
             <h1 className="mt-4 max-w-3xl text-4xl font-black leading-none tracking-[-0.06em] md:text-6xl">
-              Printable monthly analytics reports.
+Monthly Performance & Analytics Reports
             </h1>
 
             <p className="mt-5 max-w-2xl text-sm leading-6 text-white/65">

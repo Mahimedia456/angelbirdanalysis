@@ -12,7 +12,6 @@ import {
   CheckCircle2,
   FileSpreadsheet,
   Loader2,
-  LockKeyhole,
   RefreshCw,
   ShieldCheck,
   SmilePlus,
@@ -29,7 +28,6 @@ import { useAuth } from "../context/AuthContext";
 
 import {
   canUploadData,
-  formatRoleName,
 } from "../utils/permissions";
 
 import {
@@ -538,7 +536,7 @@ export default function HomePage() {
         />
 
         <div className="relative px-6 py-8 sm:px-8 lg:px-10 lg:py-10">
-          <div className="grid gap-8 xl:grid-cols-[1fr_410px] xl:items-start">
+          <div className="grid gap-8 xl:grid-cols-[1fr_410px] xl:items-center">
             <div className="min-w-0">
               <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-3 py-2 shadow-sm">
                 <ShieldCheck size={15} className="shrink-0 text-slate-700" />
@@ -551,14 +549,13 @@ export default function HomePage() {
               <h1 className="mt-5 max-w-[850px] text-[clamp(2.4rem,4.2vw,4.7rem)] font-extrabold leading-[0.96] tracking-[-0.06em] text-slate-950">
                 Angelbird Reports &amp; Analytics.
               </h1>
-
-           
+              <p className="mt-5 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
+  Select a reporting month to view ticket and satisfaction analytics. Reports
+  are filtered automatically by the selected period.
+</p>
 
               <div className="mt-7 flex flex-wrap items-center gap-3">
-                <Link
-                  to="/reports"
-                  className="angel-btn angel-btn-lime"
-                >
+                <Link to="/reports" className="angel-btn angel-btn-lime">
                   View Reports
                 </Link>
 
@@ -605,7 +602,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="w-full min-w-0 rounded-[26px] border border-slate-200 bg-white/95 p-5 shadow-sm">
+            <div className="w-full min-w-0 self-center rounded-[26px] border border-slate-200 bg-white/95 p-5 shadow-sm">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="angel-mini-label">Reporting Period</p>
@@ -719,53 +716,37 @@ export default function HomePage() {
         </div>
       </section>
 
-      {!uploadAllowed ? (
-        <section className="flex items-start gap-4 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-slate-700 shadow-sm">
-            <LockKeyhole size={19} />
-          </div>
+      {uploadAllowed ? (
+        <section className="grid gap-4 md:grid-cols-3">
+          {featureCards.map((feature) => {
+            const Icon = feature.icon;
 
-          <div>
-            <p className="font-extrabold text-slate-950">View-only access</p>
+            return (
+              <article
+                key={feature.title}
+                className="angel-card flex min-w-0 flex-col p-5 transition duration-200 hover:-translate-y-1 hover:shadow-lg"
+              >
+                <div
+                  className="flex h-12 w-12 items-center justify-center rounded-2xl text-slate-950"
+                  style={{
+                    background: "var(--accent-color)",
+                  }}
+                >
+                  <Icon size={22} />
+                </div>
 
-            <p className="mt-1 text-sm leading-6 text-slate-500">
-              Your {formatRoleName(user?.role)} account can change the reporting
-              year and month, view reports and export data. Upload and delete
-              operations are restricted to Owner and Admin.
-            </p>
-          </div>
+                <h2 className="mt-5 text-xl font-extrabold tracking-[-0.035em] text-slate-950">
+                  {feature.title}
+                </h2>
+
+                <p className="mt-3 text-sm leading-6 text-slate-500">
+                  {feature.description}
+                </p>
+              </article>
+            );
+          })}
         </section>
       ) : null}
-
-      <section className="grid gap-4 md:grid-cols-3">
-        {featureCards.map((feature) => {
-          const Icon = feature.icon;
-
-          return (
-            <article
-              key={feature.title}
-              className="angel-card flex min-w-0 flex-col p-5 transition duration-200 hover:-translate-y-1 hover:shadow-lg"
-            >
-              <div
-                className="flex h-12 w-12 items-center justify-center rounded-2xl text-slate-950"
-                style={{
-                  background: "var(--accent-color)",
-                }}
-              >
-                <Icon size={22} />
-              </div>
-
-              <h2 className="mt-5 text-xl font-extrabold tracking-[-0.035em] text-slate-950">
-                {feature.title}
-              </h2>
-
-              <p className="mt-3 text-sm leading-6 text-slate-500">
-                {feature.description}
-              </p>
-            </article>
-          );
-        })}
-      </section>
 
       {uploadAllowed ? (
         <>
