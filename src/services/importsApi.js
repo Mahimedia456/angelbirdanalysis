@@ -4,13 +4,11 @@ import {
 
 export async function importMonthlyDataset({
   datasetType,
-  periodKey,
   file,
   rows,
   columnMapping = {},
 }) {
-  const formData =
-    new FormData();
+  const formData = new FormData();
 
   formData.append(
     "datasetType",
@@ -18,22 +16,13 @@ export async function importMonthlyDataset({
   );
 
   formData.append(
-    "periodKey",
-    periodKey
-  );
-
-  formData.append(
     "rows",
-    JSON.stringify(
-      rows || []
-    )
+    JSON.stringify(rows || [])
   );
 
   formData.append(
     "columnMapping",
-    JSON.stringify(
-      columnMapping || {}
-    )
+    JSON.stringify(columnMapping || {})
   );
 
   if (file) {
@@ -43,14 +32,13 @@ export async function importMonthlyDataset({
     );
   }
 
-  const response =
-    await apiRequest(
-      "/imports/monthly",
-      {
-        method: "POST",
-        body: formData,
-      }
-    );
+  const response = await apiRequest(
+    "/imports/monthly",
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
 
   return response.data;
 }

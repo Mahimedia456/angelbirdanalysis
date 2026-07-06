@@ -10,7 +10,6 @@ import RoleRoute from "./components/auth/RoleRoute";
 import AppLayout from "./layouts/AppLayout";
 
 import HomePage from "./pages/HomePage";
-import DashboardPage from "./pages/DashboardPage";
 import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
 import LoginPage from "./pages/auth/LoginPage";
@@ -28,35 +27,28 @@ export default function App() {
     <Routes>
       <Route
         path="/login"
-        element={
-          <LoginPage />
-        }
+        element={<LoginPage />}
       />
 
-      <Route
-        element={
-          <ProtectedLayout />
-        }
-      >
+      <Route element={<ProtectedLayout />}>
         <Route
           index
-          element={
-            <HomePage />
-          }
+          element={<HomePage />}
         />
 
         <Route
           path="/dashboard"
           element={
-            <DashboardPage />
+            <Navigate
+              to="/reports"
+              replace
+            />
           }
         />
 
         <Route
           path="/reports"
-          element={
-            <ReportsPage />
-          }
+          element={<ReportsPage />}
         />
 
         <Route
@@ -83,8 +75,7 @@ export default function App() {
               ]}
             >
               <div className="angel-card p-6">
-                Admin module will be
-                added here.
+                Admin module will be added here.
               </div>
             </RoleRoute>
           }

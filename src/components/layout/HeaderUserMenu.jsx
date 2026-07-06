@@ -18,9 +18,7 @@ import {
   formatRoleName,
 } from "../../utils/permissions";
 
-function getUserInitials(
-  user
-) {
+function getUserInitials(user) {
   const source =
     user?.fullName ||
     user?.email ||
@@ -31,9 +29,7 @@ function getUserInitials(
     .filter(Boolean)
     .slice(0, 2)
     .map((part) =>
-      part
-        .charAt(0)
-        .toUpperCase()
+      part.charAt(0).toUpperCase()
     )
     .join("");
 }
@@ -44,8 +40,7 @@ export default function HeaderUserMenu({
   onClose,
   compact = false,
 }) {
-  const navigate =
-    useNavigate();
+  const navigate = useNavigate();
 
   const {
     user,
@@ -53,9 +48,7 @@ export default function HeaderUserMenu({
   } = useAuth();
 
   const settingsAllowed =
-    canManageSettings(
-      user?.role
-    );
+    canManageSettings(user?.role);
 
   async function handleLogout() {
     onClose?.();
@@ -74,13 +67,10 @@ export default function HeaderUserMenu({
           <div
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-sm font-black text-slate-950"
             style={{
-              background:
-                "var(--accent-color)",
+              background: "var(--accent-color)",
             }}
           >
-            {getUserInitials(
-              user
-            )}
+            {getUserInitials(user)}
           </div>
 
           <div className="min-w-0 flex-1">
@@ -103,9 +93,7 @@ export default function HeaderUserMenu({
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <span className="rounded-full bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-slate-600 shadow-sm">
-            {formatRoleName(
-              user?.role
-            )}
+            {formatRoleName(user?.role)}
           </span>
 
           <div className="flex gap-2">
@@ -115,25 +103,17 @@ export default function HeaderUserMenu({
                 onClick={onClose}
                 className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-black text-slate-600 transition hover:bg-slate-100"
               >
-                <Palette
-                  size={15}
-                />
-
+                <Palette size={15} />
                 Settings
               </Link>
             ) : null}
 
             <button
               type="button"
-              onClick={
-                handleLogout
-              }
+              onClick={handleLogout}
               className="inline-flex items-center gap-2 rounded-xl bg-red-50 px-3 py-2.5 text-xs font-black text-red-600 transition hover:bg-red-100"
             >
-              <LogOut
-                size={15}
-              />
-
+              <LogOut size={15} />
               Sign Out
             </button>
           </div>
@@ -154,13 +134,10 @@ export default function HeaderUserMenu({
         <div
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-black text-slate-950"
           style={{
-            background:
-              "var(--accent-color)",
+            background: "var(--accent-color)",
           }}
         >
-          {getUserInitials(
-            user
-          )}
+          {getUserInitials(user)}
         </div>
 
         <div className="hidden min-w-0 text-left xl:block">
@@ -171,9 +148,7 @@ export default function HeaderUserMenu({
           </p>
 
           <p className="mt-0.5 text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">
-            {formatRoleName(
-              user?.role
-            )}
+            {formatRoleName(user?.role)}
           </p>
         </div>
       </button>
@@ -193,13 +168,10 @@ export default function HeaderUserMenu({
                 <div
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-sm font-black text-slate-950"
                   style={{
-                    background:
-                      "var(--accent-color)",
+                    background: "var(--accent-color)",
                   }}
                 >
-                  {getUserInitials(
-                    user
-                  )}
+                  {getUserInitials(user)}
                 </div>
 
                 <div className="min-w-0">
@@ -209,16 +181,13 @@ export default function HeaderUserMenu({
                   </p>
 
                   <p className="mt-1 truncate text-xs text-slate-500">
-                    {user?.email ||
-                      "-"}
+                    {user?.email || "-"}
                   </p>
                 </div>
               </div>
 
               <span className="mt-4 inline-flex rounded-full bg-slate-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-slate-600">
-                {formatRoleName(
-                  user?.role
-                )}
+                {formatRoleName(user?.role)}
               </span>
             </div>
 
@@ -229,25 +198,17 @@ export default function HeaderUserMenu({
                   onClick={onClose}
                   className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950"
                 >
-                  <Palette
-                    size={17}
-                  />
-
+                  <Palette size={17} />
                   Settings
                 </Link>
               ) : null}
 
               <button
                 type="button"
-                onClick={
-                  handleLogout
-                }
+                onClick={handleLogout}
                 className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold text-red-600 transition hover:bg-red-50"
               >
-                <LogOut
-                  size={17}
-                />
-
+                <LogOut size={17} />
                 Sign Out
               </button>
             </div>

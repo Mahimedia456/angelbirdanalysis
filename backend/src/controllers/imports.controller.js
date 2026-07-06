@@ -4,7 +4,6 @@ import {
 
 const allowedDatasetTypes = [
   "tickets",
-  "products",
   "satisfaction",
 ];
 
@@ -20,10 +19,6 @@ export async function importDataset(
       .trim()
       .toLowerCase();
 
-    const periodKey = String(
-      request.body.periodKey || ""
-    ).trim();
-
     if (
       !allowedDatasetTypes.includes(
         datasetType
@@ -31,15 +26,8 @@ export async function importDataset(
     ) {
       return response.status(400).json({
         success: false,
-        message: "Invalid dataset type.",
-      });
-    }
-
-    if (!periodKey) {
-      return response.status(400).json({
-        success: false,
         message:
-          "Reporting period is required.",
+          "Invalid dataset type. Only tickets and satisfaction are allowed.",
       });
     }
 
@@ -54,7 +42,7 @@ export async function importDataset(
       return response.status(400).json({
         success: false,
         message:
-          "Mapped rows contain invalid JSON.",
+          "Rows contain invalid JSON.",
       });
     }
 
@@ -69,16 +57,17 @@ export async function importDataset(
     const result =
       await importMonthlyDataset({
         datasetType,
-        periodKey,
         rows,
         file: request.file,
-        userId: request.profile.id,
+        userId:
+          request.profile?.id ||
+          null,
         columnMapping,
       });
 
     return response.status(201).json({
       success: true,
-      message: `${datasetType} imported successfully for ${result.period.period_name}.`,
+      message: `${datasetType} imported successfully.`,
       data: result,
     });
   } catch (error) {

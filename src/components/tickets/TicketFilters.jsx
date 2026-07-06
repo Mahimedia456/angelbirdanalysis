@@ -5,17 +5,59 @@ import {
   getUniqueValues,
 } from "../../utils/ticketMapper";
 
+function normalizeOption(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+function uniqueCleanOptions(values = []) {
+  const map = new Map();
+
+  values.forEach((value) => {
+    const clean = String(value || "")
+      .trim()
+      .replace(/\s+/g, " ");
+
+    if (!clean) return;
+
+    const key = normalizeOption(clean);
+
+    if (!map.has(key)) {
+      map.set(key, clean);
+    }
+  });
+
+  return Array.from(map.values()).sort((a, b) =>
+    a.localeCompare(b)
+  );
+}
+
 export default function TicketFilters({
   tickets = [],
   filters,
   onChange,
 }) {
-  const supportCategories = getUniqueValues(tickets, "support_category");
-  const productCategories = getUniqueValues(tickets, "product_category");
-  const procedures = getUniqueValues(tickets, "procedure");
+  const supportCategories = uniqueCleanOptions(
+    getUniqueValues(tickets, "support_category")
+  );
 
-  const activeRegions = ALLOWED_REGIONS.filter((region) =>
-    tickets.some((ticket) => ticket.region === region)
+  const productCategories = uniqueCleanOptions(
+    getUniqueValues(tickets, "product_category")
+  );
+
+  const procedures = uniqueCleanOptions(
+    getUniqueValues(tickets, "procedure")
+  );
+
+  const activeRegions = uniqueCleanOptions(
+    ALLOWED_REGIONS.filter((region) =>
+      tickets.some(
+        (ticket) =>
+          normalizeOption(ticket.region) === normalizeOption(region)
+      )
+    )
   );
 
   function updateFilter(key, value) {
@@ -68,9 +110,7 @@ export default function TicketFilters({
           <select
             className="angel-input h-12"
             value={filters.region}
-            onChange={(event) =>
-              updateFilter("region", event.target.value)
-            }
+            onChange={(event) => updateFilter("region", event.target.value)}
           >
             <option value="">All Regions</option>
 
@@ -151,9 +191,7 @@ export default function TicketFilters({
             type="date"
             className="angel-input h-12"
             value={filters.dateFrom}
-            onChange={(event) =>
-              updateFilter("dateFrom", event.target.value)
-            }
+            onChange={(event) => updateFilter("dateFrom", event.target.value)}
           />
         </div>
 
@@ -164,9 +202,7 @@ export default function TicketFilters({
             type="date"
             className="angel-input h-12"
             value={filters.dateTo}
-            onChange={(event) =>
-              updateFilter("dateTo", event.target.value)
-            }
+            onChange={(event) => updateFilter("dateTo", event.target.value)}
           />
         </div>
 

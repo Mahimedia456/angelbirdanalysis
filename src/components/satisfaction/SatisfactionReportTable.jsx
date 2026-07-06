@@ -797,9 +797,9 @@ export default function SatisfactionReportTable({
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1510px] border-collapse text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-[0.14em] text-slate-500">
+        <div className="w-full">
+  <table className="w-full table-fixed border-collapse text-left text-sm">
+    <thead className="bg-slate-50 text-xs uppercase tracking-[0.14em] text-slate-500">
               <tr>
                 <th className="min-w-[120px] px-4 py-4 font-black">
                   Ticket ID
@@ -813,9 +813,7 @@ export default function SatisfactionReportTable({
                   Comment
                 </th>
 
-                <th className="min-w-[260px] px-4 py-4 font-black">
-                  Reason
-                </th>
+                
 
                 <th className="min-w-[160px] px-4 py-4 font-black">
                   Updated Date
@@ -893,13 +891,7 @@ export default function SatisfactionReportTable({
                           </span>
                         </td>
 
-                        <td className="px-4 py-4 text-slate-600">
-                          <span className="block whitespace-normal break-words leading-6">
-                            {getReason(
-                              row
-                            ) || "-"}
-                          </span>
-                        </td>
+                      
 
                         <td className="px-4 py-4 text-slate-600">
                           {getUpdatedDate(
@@ -957,11 +949,7 @@ export default function SatisfactionReportTable({
               ) : (
                 <tr>
                   <td
-                    colSpan={
-                      preview
-                        ? 6
-                        : 7
-                    }
+                    colSpan={preview ? 5 : 6}
                     className="px-4 py-12 text-center text-sm font-bold text-slate-400"
                   >
                     No matching customer satisfaction data available.

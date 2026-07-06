@@ -1,10 +1,9 @@
 import {
-  BarChart3,
   Eye,
   FileSpreadsheet,
+  Home,
   Menu,
   Palette,
-  Upload,
   X,
 } from "lucide-react";
 
@@ -26,8 +25,6 @@ import {
 
 import {
   canManageSettings,
-  canUploadData,
-  canViewDashboard,
   canViewReports,
 } from "../../utils/permissions";
 
@@ -45,16 +42,12 @@ function NavigationLink({
       to={item.to}
       end={item.end}
       onClick={onClick}
-      className={({
-        isActive,
-      }) =>
+      className={({ isActive }) =>
         [
           "inline-flex min-w-0 items-center gap-2 font-black transition",
-
           mobile
             ? "w-full rounded-2xl px-4 py-3 text-sm"
             : "rounded-full px-4 py-2.5 text-sm",
-
           isActive
             ? "text-slate-950"
             : mobile
@@ -62,21 +55,15 @@ function NavigationLink({
             : "text-slate-500 hover:bg-slate-100 hover:text-slate-950",
         ].join(" ")
       }
-      style={({
-        isActive,
-      }) =>
+      style={({ isActive }) =>
         isActive
           ? {
-              background:
-                "var(--accent-color)",
+              background: "var(--accent-color)",
             }
           : undefined
       }
     >
-      <Icon
-        size={16}
-        className="shrink-0"
-      />
+      <Icon size={16} className="shrink-0" />
 
       <span className="truncate">
         {item.label}
@@ -86,102 +73,53 @@ function NavigationLink({
 }
 
 export default function Header() {
-  const {
-    user,
-  } = useAuth();
+  const { user } = useAuth();
 
-  const [
-    mobileMenuOpen,
-    setMobileMenuOpen,
-  ] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] =
+    useState(false);
 
-  const [
-    profileMenuOpen,
-    setProfileMenuOpen,
-  ] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] =
+    useState(false);
 
-  const navItems =
-    useMemo(() => {
-      const items = [];
+  const navItems = useMemo(() => {
+    const items = [];
 
-      const uploadAllowed =
-        canUploadData(
-          user?.role
-        );
+    items.push({
+      label: "Home",
+      to: "/",
+      icon: Home,
+      end: true,
+    });
 
+    if (canViewReports(user?.role)) {
       items.push({
-        label:
-          uploadAllowed
-            ? "Upload"
-            : "Overview",
-
-        to: "/",
-
-        icon:
-          uploadAllowed
-            ? Upload
-            : Eye,
-
-        end: true,
+        label: "Reports",
+        to: "/reports",
+        icon: FileSpreadsheet,
       });
+    }
 
-      if (
-        canViewDashboard(
-          user?.role
-        )
-      ) {
-        items.push({
-          label: "Dashboard",
-          to: "/dashboard",
-          icon: BarChart3,
-        });
-      }
+    if (canManageSettings(user?.role)) {
+      items.push({
+        label: "Settings",
+        to: "/settings",
+        icon: Palette,
+      });
+    }
 
-      if (
-        canViewReports(
-          user?.role
-        )
-      ) {
-        items.push({
-          label: "Reports",
-          to: "/reports",
-          icon:
-            FileSpreadsheet,
-        });
-      }
-
-      if (
-        canManageSettings(
-          user?.role
-        )
-      ) {
-        items.push({
-          label: "Settings",
-          to: "/settings",
-          icon: Palette,
-        });
-      }
-
-      return items;
-    }, [user?.role]);
+    return items;
+  }, [user?.role]);
 
   function closeMobileMenu() {
-    setMobileMenuOpen(
-      false
-    );
+    setMobileMenuOpen(false);
   }
 
   function closeProfileMenu() {
-    setProfileMenuOpen(
-      false
-    );
+    setProfileMenuOpen(false);
   }
 
   function toggleProfileMenu() {
-    setProfileMenuOpen(
-      (current) =>
-        !current
-    );
+    setProfileMenuOpen((current) => !current);
   }
 
   return (
@@ -210,57 +148,41 @@ export default function Header() {
               </p>
 
               <p className="mt-0.5 hidden truncate text-xs font-semibold text-slate-500 sm:block">
-                Ticket Analytics · Product Master
+                Tickets · Satisfaction Reports
               </p>
             </div>
           </Link>
 
           <nav className="hidden shrink-0 items-center gap-1 rounded-full border border-slate-200 bg-white p-1 shadow-sm lg:flex">
-            {navItems.map(
-              (item) => (
-                <NavigationLink
-                  key={item.to}
-                  item={item}
-                />
-              )
-            )}
+            {navItems.map((item) => (
+              <NavigationLink
+                key={item.to}
+                item={item}
+              />
+            ))}
           </nav>
 
           <div className="flex shrink-0 items-center gap-2">
             <HeaderUserMenu
-              open={
-                profileMenuOpen
-              }
-              onToggle={
-                toggleProfileMenu
-              }
-              onClose={
-                closeProfileMenu
-              }
+              open={profileMenuOpen}
+              onToggle={toggleProfileMenu}
+              onClose={closeProfileMenu}
             />
 
             <button
               type="button"
               onClick={() => {
-                setMobileMenuOpen(
-                  (current) =>
-                    !current
-                );
-
+                setMobileMenuOpen((current) => !current);
                 closeProfileMenu();
               }}
               className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-100 lg:hidden"
-              aria-expanded={
-                mobileMenuOpen
-              }
+              aria-expanded={mobileMenuOpen}
               aria-label="Toggle navigation menu"
             >
               {mobileMenuOpen ? (
                 <X size={20} />
               ) : (
-                <Menu
-                  size={20}
-                />
+                <Menu size={20} />
               )}
             </button>
           </div>
@@ -269,26 +191,20 @@ export default function Header() {
         {mobileMenuOpen ? (
           <div className="border-t border-slate-200 pb-5 pt-4 lg:hidden">
             <nav className="grid gap-2">
-              {navItems.map(
-                (item) => (
-                  <NavigationLink
-                    key={item.to}
-                    item={item}
-                    mobile
-                    onClick={
-                      closeMobileMenu
-                    }
-                  />
-                )
-              )}
+              {navItems.map((item) => (
+                <NavigationLink
+                  key={item.to}
+                  item={item}
+                  mobile
+                  onClick={closeMobileMenu}
+                />
+              ))}
             </nav>
 
             <div className="mt-4">
               <HeaderUserMenu
                 compact
-                onClose={
-                  closeMobileMenu
-                }
+                onClose={closeMobileMenu}
               />
             </div>
           </div>
