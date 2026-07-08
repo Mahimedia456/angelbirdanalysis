@@ -13,6 +13,8 @@ import HomePage from "./pages/HomePage";
 import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
 import LoginPage from "./pages/auth/LoginPage";
+import HomePageSheet from "./pages/HomePageSheet";
+import ReportPageSheet from "./pages/ReportPageSheet";
 
 function ProtectedLayout() {
   return (
@@ -49,6 +51,16 @@ export default function App() {
         <Route
           path="/reports"
           element={<ReportsPage />}
+        />
+
+        <Route
+          path="/sheet-home"
+          element={<HomePageSheet />}
+        />
+
+        <Route
+          path="/sheet-reports"
+          element={<ReportPageSheet />}
         />
 
         <Route

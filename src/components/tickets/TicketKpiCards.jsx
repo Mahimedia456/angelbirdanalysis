@@ -42,7 +42,7 @@ export default function TicketKpiCards({ analytics }) {
     },
     {
       key: "troubleshootCount",
-      label: "Troubleshoot",
+      label: "Troubleshooting",
       value: analytics.kpis.troubleshootCount,
       helper: "Troubleshooting cases",
     },

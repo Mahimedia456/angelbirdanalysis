@@ -664,6 +664,29 @@ export function apiDelete(
     }
   );
 }
+export const apiClient = {
+  get(path, options = {}) {
+    return apiGet(path, options);
+  },
+
+  post(path, body, options = {}) {
+    return apiPost(path, body, options);
+  },
+
+  put(path, body, options = {}) {
+    return apiPut(path, body, options);
+  },
+
+  patch(path, body, options = {}) {
+    return apiPatch(path, body, options);
+  },
+
+  delete(path, options = {}) {
+    return apiDelete(path, options);
+  },
+};
+
+export default apiClient;
 
 export {
   API_BASE_URL,

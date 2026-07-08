@@ -7,13 +7,21 @@ import {
   X,
 } from "lucide-react";
 
-import { useMemo, useState } from "react";
+import {
+  useMemo,
+  useState,
+} from "react";
 
-import { Link, NavLink } from "react-router-dom";
+import {
+  Link,
+  NavLink,
+} from "react-router-dom";
 
 import logo from "../../assets/logo.svg";
 
-import { useAuth } from "../../context/AuthContext";
+import {
+  useAuth,
+} from "../../context/AuthContext";
 
 import {
   canManageSettings,
@@ -22,7 +30,11 @@ import {
 
 import HeaderUserMenu from "./HeaderUserMenu";
 
-function NavigationLink({ item, onClick, mobile = false }) {
+function NavigationLink({
+  item,
+  onClick,
+  mobile = false,
+}) {
   const Icon = item.icon;
 
   return (
@@ -52,7 +64,10 @@ function NavigationLink({ item, onClick, mobile = false }) {
       }
     >
       <Icon size={16} className="shrink-0" />
-      <span className="truncate">{item.label}</span>
+
+      <span className="truncate">
+        {item.label}
+      </span>
     </NavLink>
   );
 }
@@ -60,12 +75,11 @@ function NavigationLink({ item, onClick, mobile = false }) {
 export default function Header() {
   const { user } = useAuth();
 
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] =
+    useState(false);
 
-  const sheetMenuAllowed =
-    String(user?.email || "").toLowerCase() ===
-    "aamir@mahimediasolutions.com";
+  const [profileMenuOpen, setProfileMenuOpen] =
+    useState(false);
 
   const navItems = useMemo(() => {
     const items = [];
@@ -85,20 +99,6 @@ export default function Header() {
       });
     }
 
-    if (sheetMenuAllowed) {
-      items.push({
-        label: "Sheet Home",
-        to: "/sheet-home",
-        icon: Home,
-      });
-
-      items.push({
-        label: "Sheet Reports",
-        to: "/sheet-reports",
-        icon: FileSpreadsheet,
-      });
-    }
-
     if (canManageSettings(user?.role)) {
       items.push({
         label: "Settings",
@@ -108,7 +108,7 @@ export default function Header() {
     }
 
     return items;
-  }, [user?.role, sheetMenuAllowed]);
+  }, [user?.role]);
 
   function closeMobileMenu() {
     setMobileMenuOpen(false);
@@ -155,7 +155,10 @@ export default function Header() {
 
           <nav className="hidden shrink-0 items-center gap-1 rounded-full border border-slate-200 bg-white p-1 shadow-sm lg:flex">
             {navItems.map((item) => (
-              <NavigationLink key={item.to} item={item} />
+              <NavigationLink
+                key={item.to}
+                item={item}
+              />
             ))}
           </nav>
 
@@ -176,7 +179,11 @@ export default function Header() {
               aria-expanded={mobileMenuOpen}
               aria-label="Toggle navigation menu"
             >
-              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              {mobileMenuOpen ? (
+                <X size={20} />
+              ) : (
+                <Menu size={20} />
+              )}
             </button>
           </div>
         </div>
@@ -195,7 +202,10 @@ export default function Header() {
             </nav>
 
             <div className="mt-4">
-              <HeaderUserMenu compact onClose={closeMobileMenu} />
+              <HeaderUserMenu
+                compact
+                onClose={closeMobileMenu}
+              />
             </div>
           </div>
         ) : null}

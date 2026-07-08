@@ -25,15 +25,15 @@ export default function SatisfactionAnalyticsPanel({
           type="pie"
         />
 
-        <ChartPanel
+        {/* <ChartPanel
           chartId={`${prefix}_satisfaction_solved_status`}
           title="Solved vs Not Solved"
           data={analytics.solvedSummary}
           type="pie"
-        />
+        /> */}
 
         <ChartPanel
-          className="xl:col-span-2"
+          
           chartId={`${prefix}_satisfaction_comments`}
           title="Comments Availability"
           data={analytics.commentSummary}

@@ -30,8 +30,8 @@ import {
 } from "../utils/storage";
 
 import {
-  fetchReportsData,
-} from "../services/reportsApi";
+  fetchSheetReportsData,
+} from "../services/sheetReportsApi";
 
 import {
   buildTicketAnalytics,
@@ -129,6 +129,37 @@ function getSatisfactionDate(row) {
       row.response_date ||
       ""
   );
+}
+
+function getTicketIdentity(row) {
+  return cleanText(
+    row.ticketNumber ||
+      row.ticket_number ||
+      row.ticketNo ||
+      row.ticket_id ||
+      row.ticketId ||
+      row.id ||
+      ""
+  ).toLowerCase();
+}
+
+function deduplicateTickets(rows = []) {
+  const seen = new Set();
+
+  return rows.filter((row) => {
+    const identity = getTicketIdentity(row);
+
+    if (!identity) {
+      return true;
+    }
+
+    if (seen.has(identity)) {
+      return false;
+    }
+
+    seen.add(identity);
+    return true;
+  });
 }
 
 function getTicketValue(row, keys) {
@@ -277,7 +308,7 @@ function exportTicketExcel({
 }) {
   exportRowsToExcel({
     rows,
-    filename: `angelbird-all-uploaded-data-ticket-${tableMode}-report`,
+    filename: `angelbird-google-sheet-ticket-${tableMode}-report`,
     sheetName: "Ticket Report",
 
     mapRow: (row) => ({
@@ -356,7 +387,7 @@ function exportSatisfactionExcel({
 }) {
   exportRowsToExcel({
     rows,
-    filename: "angelbird-all-uploaded-data-satisfaction-report",
+    filename: "angelbird-google-sheet-satisfaction-report",
     sheetName: "Satisfaction Report",
 
     mapRow: (row) => ({
@@ -467,7 +498,7 @@ function ReportsLoading() {
         />
 
         <p className="mt-4 text-sm font-black text-slate-600">
-          Loading reports...
+          Loading Google Sheet reports...
         </p>
       </div>
     </div>
@@ -478,17 +509,15 @@ function EmptyDataState() {
   return (
     <section className="flex min-h-[320px] items-center justify-center rounded-[28px] border border-slate-200 bg-white p-8 text-center">
       <div>
-        <FileSpreadsheet
-          size={38}
-          className="mx-auto text-slate-300"
-        />
+        <FileSpreadsheet size={38} className="mx-auto text-slate-300" />
 
         <h2 className="mt-5 text-2xl font-extrabold text-slate-950">
-          No uploaded data available
+          No Google Sheet data available
         </h2>
 
         <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-500">
-          Upload ticket or satisfaction CSV data from Home first.
+          Add ticket or satisfaction records in the connected Google Sheet and
+          refresh this report.
         </p>
       </div>
     </section>
@@ -630,7 +659,7 @@ function TicketTabbedTable({
             </h3>
 
             <p className="mt-2 text-sm text-slate-500">
-              Select a category tab and filter the actual ticket records.
+              Duplicate ticket IDs are excluded from counts and charts.
             </p>
           </div>
 
@@ -702,7 +731,7 @@ function TicketTabbedTable({
         ) : null}
 
         <div className="mt-5 inline-flex rounded-full bg-slate-100 px-4 py-2 text-xs font-black text-slate-600">
-          Showing {visibleTickets.length.toLocaleString()} ticket records
+          Showing {visibleTickets.length.toLocaleString()} unique ticket records
         </div>
       </div>
 
@@ -736,7 +765,7 @@ function TicketTabbedTable({
 
             {visibleTickets.map((ticket, index) => (
               <tr
-                key={ticket.id || index}
+                key={getTicketIdentity(ticket) || ticket.id || index}
                 className="text-slate-700 transition hover:bg-slate-50"
               >
                 <td className="whitespace-nowrap px-4 py-3">
@@ -813,7 +842,7 @@ function TicketTabbedTable({
   );
 }
 
-export default function ReportsPage() {
+export default function ReportPageSheet() {
   const [mode, setMode] = useState("tickets");
 
   const [ticketRows, setTicketRows] = useState([]);
@@ -836,15 +865,15 @@ export default function ReportsPage() {
     dateTo: "",
   });
 
-const [satisfactionFilters, setSatisfactionFilters] = useState({
-  search: "",
-  year: "",
-  month: "",
-  rating: "",
-  solvedStatus: "",
-  dateFrom: "",
-  dateTo: "",
-});
+  const [satisfactionFilters, setSatisfactionFilters] = useState({
+    search: "",
+    year: "",
+    month: "",
+    rating: "",
+    solvedStatus: "",
+    dateFrom: "",
+    dateTo: "",
+  });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -863,11 +892,13 @@ const [satisfactionFilters, setSatisfactionFilters] = useState({
     setError("");
 
     try {
-      const data = await fetchReportsData({
+      const data = await fetchSheetReportsData({
         signal,
       });
 
-      setTicketRows(data?.tickets || []);
+      const uniqueTickets = deduplicateTickets(data?.tickets || []);
+
+      setTicketRows(uniqueTickets);
       setSatisfactionRows(data?.satisfaction || []);
       setChartSettings(getChartSettings());
 
@@ -877,7 +908,7 @@ const [satisfactionFilters, setSatisfactionFilters] = useState({
         return;
       }
 
-      setError(loadError.message || "Unable to load report data.");
+      setError(loadError.message || "Unable to load Google Sheet report data.");
     } finally {
       setLoading(false);
     }
@@ -896,15 +927,15 @@ const [satisfactionFilters, setSatisfactionFilters] = useState({
       dateTo: "",
     });
 
- setSatisfactionFilters({
-  search: "",
-  year: "",
-  month: "",
-  rating: "",
-  solvedStatus: "",
-  dateFrom: "",
-  dateTo: "",
-});
+    setSatisfactionFilters({
+      search: "",
+      year: "",
+      month: "",
+      rating: "",
+      solvedStatus: "",
+      dateFrom: "",
+      dateTo: "",
+    });
   }
 
   const filteredTickets = useMemo(() => {
@@ -1030,25 +1061,23 @@ const [satisfactionFilters, setSatisfactionFilters] = useState({
         return false;
       }
 
-const rowDate = getSatisfactionDate(row);
-const rowYear = rowDate.slice(0, 4);
-const rowMonth = rowDate.slice(5, 7);
+      const rowDate = getSatisfactionDate(row);
+      const rowYear = rowDate.slice(0, 4);
+      const rowMonth = rowDate.slice(5, 7);
 
-if (
-  satisfactionFilters.year &&
-  rowYear !== satisfactionFilters.year
-) {
-  return false;
-}
+      if (
+        satisfactionFilters.year &&
+        rowYear !== satisfactionFilters.year
+      ) {
+        return false;
+      }
 
-if (
-  satisfactionFilters.month &&
-  rowMonth !== satisfactionFilters.month
-) {
-  return false;
-}
-
-   
+      if (
+        satisfactionFilters.month &&
+        rowMonth !== satisfactionFilters.month
+      ) {
+        return false;
+      }
 
       if (
         satisfactionFilters.rating &&
@@ -1093,7 +1122,7 @@ if (
   const currentModeLabel =
     mode === "tickets" ? "Ticket Report" : "Satisfaction Report";
 
-  const exportTitle = `Angelbird All Uploaded Data ${currentModeLabel}`;
+  const exportTitle = `Angelbird Google Sheet ${currentModeLabel}`;
 
   function handleExcelExport() {
     if (mode === "tickets") {
@@ -1114,48 +1143,47 @@ if (
     ticketRows.length > 0 ||
     satisfactionRows.length > 0;
 
-return (
-  <div className="space-y-8 bg-white">
+  return (
+    <div className="space-y-8 bg-white">
       <section
-  id="reports-export-header"
-  className="relative overflow-hidden rounded-[38px] border border-slate-800 bg-slate-950 p-8 text-white shadow-soft md:p-10"
->
-  <div className="pointer-events-none absolute inset-0 angel-grid-bg opacity-10" />
+        id="reports-export-header"
+        className="relative overflow-hidden rounded-[38px] border border-slate-800 bg-slate-950 p-8 text-white shadow-soft md:p-10"
+      >
+        <div className="pointer-events-none absolute inset-0 angel-grid-bg opacity-10" />
 
-  <div className="relative grid gap-8 xl:grid-cols-[1fr_0.8fr] xl:items-center">
-    <div>
-      <p className="text-xs font-black uppercase tracking-[0.28em] text-white/45">
-        All Data From Zendesk
-      </p>
+        <div className="relative grid gap-8 xl:grid-cols-[1fr_0.8fr] xl:items-center">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-white/45">
+              Data From Zendesk
+            </p>
 
-      <h1 className="mt-4 max-w-3xl text-4xl font-black leading-none tracking-[-0.06em] md:text-6xl">
-        Analytics
-      </h1>
+            <h1 className="mt-4 max-w-3xl text-4xl font-black leading-none tracking-[-0.06em] md:text-6xl">
+            Analytics
+            </h1>
 
-      <p className="mt-5 max-w-2xl text-sm leading-6 text-white/65">
-        Reports load all uploaded records. Use Year, Month, Date From,
-        and Date To filters inside Ticket and Satisfaction reports.
-      </p>
-    </div>
+            <p className="mt-5 max-w-2xl text-sm leading-6 text-white/65">
+              Reports read latest ticket and satisfaction records from Zendesk. 
+            </p>
+          </div>
 
-    <div className="flex flex-col items-start justify-center rounded-[30px] border border-white/10 bg-white/[0.04] p-6 text-white xl:items-end xl:text-right">
-      <p className="text-xs font-black uppercase tracking-[0.24em] text-white/45">
-        Presented By
-      </p>
+          <div className="flex flex-col items-start justify-center rounded-[30px] border border-white/10 bg-white/[0.04] p-6 text-white xl:items-end xl:text-right">
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-white/45">
+              Presented By
+            </p>
 
-      <img
-        src="/mahi.logo.webp"
-        alt="Mahi Media Solutions"
-        className="mt-5 h-16 w-auto object-contain md:h-20"
-      />
+            <img
+              src="/mahi.logo.webp"
+              alt="Mahi Media Solutions"
+              className="mt-5 h-16 w-auto object-contain md:h-20"
+            />
 
+            <p className="mt-2 text-xs font-black uppercase tracking-[0.14em] text-white/40">
+              {mode === "tickets" ? "Ticket Analytics" : "Satisfaction Analytics"}
+            </p>
+          </div>
+        </div>
+      </section>
 
-      <p className="mt-2 text-xs font-black uppercase tracking-[0.14em] text-white/40">
-        {mode === "tickets" ? "Ticket Analytics" : "Satisfaction Analytics"}
-      </p>
-    </div>
-  </div>
-</section>
       <section className="no-print no-export rounded-[28px] border border-slate-200 bg-white p-4 shadow-soft">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div className="flex flex-wrap gap-2">
@@ -1202,10 +1230,10 @@ return (
               Export Excel
             </button>
 
-  <ExportActions
-  targetId="reports-export-area"
-  title={exportTitle}
-/>
+            <ExportActions
+              targetId="reports-export-area"
+              title={exportTitle}
+            />
           </div>
         </div>
       </section>
@@ -1248,33 +1276,18 @@ return (
                 />
               </div>
 
-              {/* <section className="angel-section p-6 pdf-export-section">
-                <p className="angel-mini-label">
-                  Report Summary
-                </p>
-
-                <h2 className="mt-2 angel-page-title">
-                  Ticket Analytics Summary
-                </h2>
-
-                <p className="mt-2 text-sm text-slate-500">
-                  Filtered tickets: {filteredTickets.length} from{" "}
-                  {ticketRows.length} total uploaded records.
-                </p>
-              </section> */}
-
               <TicketKpiCards analytics={ticketAnalytics} />
 
               <section className="grid gap-6 xl:grid-cols-2">
                 <ChartPanel
-                  chartId="ticket_by_region"
+                  chartId="sheet_ticket_by_region"
                   title="Ticket by Region"
                   data={ticketChartData.region}
                   type="pie"
                 />
 
                 <ChartPanel
-                  chartId="ticket_by_tse"
+                  chartId="sheet_ticket_by_tse"
                   title="Ticket by TSE"
                   data={ticketChartData.tse}
                   type="pie"
@@ -1282,21 +1295,21 @@ return (
 
                 <ChartPanel
                   className="xl:col-span-2"
-                  chartId="date_wise_ticket"
+                  chartId="sheet_date_wise_ticket"
                   title="Date Wise Ticket"
                   data={ticketChartData.date}
                   type="line"
                 />
 
                 <ChartPanel
-                  chartId="ticket_support_category"
+                  chartId="sheet_ticket_support_category"
                   title="Ticket Support Category"
                   data={ticketChartData.supportCategory}
                   type="bar"
                 />
 
                 <ChartPanel
-                  chartId="ticket_product_category"
+                  chartId="sheet_ticket_product_category"
                   title="Ticket Product Category"
                   data={ticketChartData.productCategory}
                   type="line"
@@ -1304,7 +1317,7 @@ return (
 
                 <ChartPanel
                   className="xl:col-span-2"
-                  chartId="ticket_procedure"
+                  chartId="sheet_ticket_procedure"
                   title="Ticket Procedure"
                   data={ticketChartData.procedure}
                   type="bar"
@@ -1312,7 +1325,7 @@ return (
 
                 <ChartPanel
                   className="xl:col-span-2"
-                  chartId="top_product_by_ticket_count"
+                  chartId="sheet_top_product_by_ticket_count"
                   title="Top Product by Ticket Count"
                   data={ticketChartData.product}
                   type="bar"
@@ -1320,7 +1333,7 @@ return (
               </section>
 
               <TicketTabbedTable
-                title="Ticket Report Data — All Uploaded Data"
+                title="Ticket Report Data — Google Sheet"
                 tickets={filteredTickets}
               />
             </>
@@ -1345,7 +1358,7 @@ return (
 
                 <p className="mt-2 text-sm text-slate-500">
                   Filtered responses: {filteredSatisfaction.length} from{" "}
-                  {satisfactionRows.length} total uploaded records.
+                  {satisfactionRows.length} total Google Sheet records.
                 </p>
               </section>
 
@@ -1354,12 +1367,12 @@ return (
               <SatisfactionAnalyticsPanel
                 analytics={satisfactionAnalytics}
                 chartSettings={chartSettings}
-                prefix="report"
+                prefix="sheet-report"
                 showTables={false}
               />
 
               <SatisfactionReportTable
-                title="Customer Satisfaction Report Data — All Uploaded Data"
+                title="Customer Satisfaction Report Data — Google Sheet"
                 rows={filteredSatisfaction}
               />
             </>

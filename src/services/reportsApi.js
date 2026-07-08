@@ -3,20 +3,14 @@ import {
 } from "./apiClient";
 
 export async function fetchReportsData({
-  period,
   signal,
 } = {}) {
-  const response =
-    await apiGet(
-      "/reports",
-      {
-        query: {
-          period,
-        },
+  const response = await apiGet(
+    "/reports",
+    {
+      signal,
+    }
+  );
 
-        signal,
-      }
-    );
-
-  return response.data;
+  return response?.data || response;
 }

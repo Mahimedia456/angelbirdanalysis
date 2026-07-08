@@ -819,9 +819,7 @@ export default function SatisfactionReportTable({
                   Updated Date
                 </th>
 
-                <th className="min-w-[150px] px-4 py-4 font-black">
-                  Solved Status
-                </th>
+             
 
                 {!preview ? (
                   <th className="min-w-[190px] px-4 py-4 font-black">
@@ -841,10 +839,7 @@ export default function SatisfactionReportTable({
                     const rating =
                       row.normalizedRating;
 
-                    const isSolved =
-                      getSolvedStatus(
-                        row
-                      );
+                   
 
                     return (
                       <tr
@@ -899,21 +894,7 @@ export default function SatisfactionReportTable({
                           )}
                         </td>
 
-                        <td className="px-4 py-4">
-                          <span
-                            className={[
-                              "inline-flex rounded-full px-3 py-1.5 text-xs font-black",
-
-                              isSolved
-                                ? "bg-slate-950 text-white"
-                                : "bg-slate-100 text-slate-600",
-                            ].join(" ")}
-                          >
-                            {isSolved
-                              ? "Solved"
-                              : "Not Solved"}
-                          </span>
-                        </td>
+                      
 
                         {!preview ? (
                           <td className="px-4 py-4">
@@ -949,7 +930,7 @@ export default function SatisfactionReportTable({
               ) : (
                 <tr>
                   <td
-                    colSpan={preview ? 5 : 6}
+                    colSpan={preview ? 4 : 5}
                     className="px-4 py-12 text-center text-sm font-bold text-slate-400"
                   >
                     No matching customer satisfaction data available.

@@ -549,6 +549,47 @@ function isSummaryTicketRow({
   return false;
 }
 
+function createTicketDedupKey(value) {
+  return [
+    value.ticket_number,
+    value.ticket_date,
+    value.region,
+    value.tse,
+    value.product_1,
+    value.product_2,
+    value.ticket_subject,
+    value.support_category,
+    value.product_category,
+    value.procedure,
+  ]
+    .map((item) =>
+      String(item || "")
+        .trim()
+        .replace(/\s+/g, " ")
+        .toLowerCase()
+    )
+    .join("|");
+}
+
+function createSatisfactionDedupKey(value) {
+  return [
+    value.ticket_id,
+    value.updated_date,
+    value.rating,
+    value.comment,
+    value.reason,
+    value.is_solved,
+  ]
+    .map((item) =>
+      String(item || "")
+        .trim()
+        .replace(/\s+/g, " ")
+        .toLowerCase()
+    )
+    .join("|");
+}
+
+
 function normalizeTicket(row, context) {
   const ticketDate = getTicketDate(row);
 
@@ -706,8 +747,9 @@ function normalizeTicket(row, context) {
     created_by: context.userId,
   };
 
-  value.row_hash = createRowHash("tickets", value);
-
+value.row_hash = createRowHash("tickets", {
+  dedup_key: createTicketDedupKey(value),
+});
   return {
     valid: true,
     value,
@@ -808,8 +850,9 @@ function normalizeSatisfaction(row, context) {
     created_by: context.userId,
   };
 
-  value.row_hash = createRowHash("satisfaction", value);
-
+value.row_hash = createRowHash("satisfaction", {
+  dedup_key: createSatisfactionDedupKey(value),
+});
   return {
     valid: true,
     value,

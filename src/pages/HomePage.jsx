@@ -8,11 +8,9 @@ import {
 import {
   AlertCircle,
   BarChart3,
-  CalendarDays,
   CheckCircle2,
   FileSpreadsheet,
   Loader2,
-  RefreshCw,
   ShieldCheck,
   SmilePlus,
   Trash2,
@@ -37,7 +35,9 @@ import {
 
 import { importMonthlyDataset } from "../services/importsApi";
 
-import { deleteSelectedPeriodData } from "../services/dataManagementApi";
+import {
+  deleteSelectedPeriodData,
+} from "../services/dataManagementApi";
 
 import {
   clearAllData,
@@ -63,31 +63,23 @@ import {
   detectSatisfactionMapping,
 } from "../utils/satisfactionMapper";
 
-import {
-  findPeriodByKey,
-  getAvailableYears,
-  getPeriodsForYear,
-  getSelectedReportingPeriod,
-  saveSelectedReportingPeriod,
-} from "../utils/reportingPeriod";
-
 const featureCards = [
   {
     title: "Ticket Analytics",
     description:
-      "Upload the full ticket CSV once and view entries month-wise using the reporting period selector.",
+      "Upload ticket CSV data and analyze all saved records using report filters.",
     icon: FileSpreadsheet,
   },
   {
     title: "Customer Satisfaction",
     description:
-      "Upload the full satisfaction CSV once and review responses by selected month.",
+      "Upload satisfaction CSV data and filter responses by month, rating, status, or date range.",
     icon: SmilePlus,
   },
   {
-    title: "Monthly Reports",
+    title: "Reports",
     description:
-      "Select any year and month to view only that period’s tickets and satisfaction records.",
+      "Open Reports to filter tickets and satisfaction records directly inside each report.",
     icon: BarChart3,
   },
 ];
@@ -142,7 +134,7 @@ function ImportStatusNotice({
           <p className="mt-1 text-sm leading-6">
             {importingDataset.charAt(0).toUpperCase() +
               importingDataset.slice(1)}{" "}
-            CSV is being saved and split month-wise using the record date.
+            CSV is being saved. Reports will use all uploaded records.
           </p>
         </div>
       </div>
@@ -192,12 +184,6 @@ export default function HomePage() {
   const [overview, setOverview] = useState(null);
   const [health, setHealth] = useState(null);
 
-  const [selectedPeriodKey, setSelectedPeriodKey] = useState(
-    getSelectedReportingPeriod()
-  );
-
-  const [selectedYear, setSelectedYear] = useState("");
-
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [overviewError, setOverviewError] = useState("");
 
@@ -205,10 +191,10 @@ export default function HomePage() {
   const [operationError, setOperationError] = useState("");
 
   const [importState, setImportState] = useState(INITIAL_IMPORT_STATE);
-  const [deletingPeriod, setDeletingPeriod] = useState(false);
+  const [deletingData, setDeletingData] = useState(false);
 
   const importBusy = Object.values(importState).some(Boolean);
-  const actionBusy = overviewLoading || importBusy || deletingPeriod;
+  const actionBusy = overviewLoading || importBusy || deletingData;
 
   const resetLocalPreview = useCallback(() => {
     clearAllData();
@@ -233,77 +219,42 @@ export default function HomePage() {
     setSatisfactionRows(getSatisfactionData());
   }, [uploadAllowed, resetLocalPreview]);
 
-  const loadOverview = useCallback(
-    async ({ period, signal } = {}) => {
-      const requestedPeriod = period ?? selectedPeriodKey;
+  const loadOverview = useCallback(async ({ signal } = {}) => {
+    setOverviewLoading(true);
+    setOverviewError("");
 
-      setOverviewLoading(true);
-      setOverviewError("");
+    try {
+      const [healthResponse, overviewResponse] = await Promise.all([
+        fetchApiHealth({ signal }),
+        fetchHomeOverview({ signal }),
+      ]);
 
-      try {
-        const [healthResponse, overviewResponse] = await Promise.all([
-          fetchApiHealth({ signal }),
-          fetchHomeOverview({
-            period: requestedPeriod,
-            signal,
-          }),
-        ]);
-
-        setHealth(healthResponse);
-        setOverview(overviewResponse);
-
-        const returnedPeriod = overviewResponse?.selectedPeriod || null;
-        const returnedPeriodKey = returnedPeriod?.period_key || "";
-
-        setSelectedPeriodKey(returnedPeriodKey);
-
-        setSelectedYear(
-          returnedPeriod?.report_year ? String(returnedPeriod.report_year) : ""
-        );
-
-        saveSelectedReportingPeriod(returnedPeriodKey);
-      } catch (error) {
-        if (error.name === "AbortError") {
-          return;
-        }
-
-        setOverviewError(
-          error.message || "Unable to load the reporting overview."
-        );
-      } finally {
-        setOverviewLoading(false);
+      setHealth(healthResponse);
+      setOverview(overviewResponse);
+    } catch (error) {
+      if (error.name === "AbortError") {
+        return;
       }
-    },
-    [selectedPeriodKey]
-  );
+
+      setOverviewError(
+        error.message || "Unable to load the dashboard overview."
+      );
+    } finally {
+      setOverviewLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
 
     loadOverview({
-      period: getSelectedReportingPeriod(),
       signal: controller.signal,
     });
 
     return () => {
       controller.abort();
     };
-  }, []);
-
-  const periods = overview?.periods || [];
-
-  const availableYears = useMemo(
-    () => getAvailableYears(periods),
-    [periods]
-  );
-
-  const selectedYearPeriods = useMemo(
-    () => getPeriodsForYear(periods, selectedYear),
-    [periods, selectedYear]
-  );
-
-  const selectedPeriod =
-    overview?.selectedPeriod || findPeriodByKey(periods, selectedPeriodKey);
+  }, [loadOverview]);
 
   const databaseSummary = overview?.periodSummary || {
     ticketCount: 0,
@@ -320,44 +271,6 @@ export default function HomePage() {
     }),
     [ticketRows, satisfactionRows, rawTicketRows, rawSatisfactionRows]
   );
-
-  async function handleYearChange(event) {
-    const year = event.target.value;
-
-    setSelectedYear(year);
-    setOperationMessage("");
-    setOperationError("");
-
-    const periodsForYear = getPeriodsForYear(periods, year);
-    const firstPeriod = periodsForYear[0];
-
-    if (!firstPeriod) {
-      setSelectedPeriodKey("");
-      saveSelectedReportingPeriod("");
-      return;
-    }
-
-    setSelectedPeriodKey(firstPeriod.period_key);
-    saveSelectedReportingPeriod(firstPeriod.period_key);
-
-    await loadOverview({
-      period: firstPeriod.period_key,
-    });
-  }
-
-  async function handlePeriodChange(event) {
-    const periodKey = event.target.value;
-
-    setSelectedPeriodKey(periodKey);
-    setOperationMessage("");
-    setOperationError("");
-
-    saveSelectedReportingPeriod(periodKey);
-
-    await loadOverview({
-      period: periodKey,
-    });
-  }
 
   async function saveDatasetAutomatically({
     datasetType,
@@ -407,9 +320,7 @@ export default function HomePage() {
         }`
       );
 
-      await loadOverview({
-        period: selectedPeriodKey,
-      });
+      await loadOverview();
     } catch (error) {
       setOperationError(error.message || `Unable to import ${datasetType} data.`);
     } finally {
@@ -483,43 +394,35 @@ export default function HomePage() {
     setTicketRows(mappedTickets);
   }
 
-  async function handleDeleteSelectedPeriod() {
-    if (!uploadAllowed || !selectedPeriodKey || deletingPeriod) {
+  async function handleDeleteAllData() {
+    if (!uploadAllowed || deletingData) {
       return;
     }
 
-    const periodName = selectedPeriod?.period_name || selectedPeriodKey;
-
     const confirmed = window.confirm(
-      `Delete all ${periodName} data?\n\nThis will permanently delete ticket records, satisfaction records, import history, Storage CSV files and local browser previews.\n\nThis action cannot be undone.`
+      "Delete all uploaded ticket and satisfaction data?\n\nThis will permanently delete all saved records, import history, Storage CSV files, and local browser previews.\n\nThis action cannot be undone."
     );
 
     if (!confirmed) {
       return;
     }
 
-    setDeletingPeriod(true);
+    setDeletingData(true);
     setOperationMessage("");
     setOperationError("");
 
     try {
-      const result = await deleteSelectedPeriodData(selectedPeriodKey);
+      await deleteSelectedPeriodData("all");
 
       resetLocalPreview();
 
-      setOperationMessage(
-        `${result?.period?.period_name || periodName} data deleted successfully.`
-      );
+      setOperationMessage("All uploaded data deleted successfully.");
 
-      await loadOverview({
-        period: selectedPeriodKey,
-      });
+      await loadOverview();
     } catch (error) {
-      setOperationError(
-        error.message || "Unable to delete the selected period data."
-      );
+      setOperationError(error.message || "Unable to delete uploaded data.");
     } finally {
-      setDeletingPeriod(false);
+      setDeletingData(false);
     }
   }
 
@@ -536,166 +439,94 @@ export default function HomePage() {
         />
 
         <div className="relative px-6 py-8 sm:px-8 lg:px-10 lg:py-10">
-          <div className="grid gap-8 xl:grid-cols-[1fr_410px] xl:items-center">
-            <div className="min-w-0">
-              <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-3 py-2 shadow-sm">
-                <ShieldCheck size={15} className="shrink-0 text-slate-700" />
+          <div className="grid gap-8 xl:grid-cols-[1fr_390px] xl:items-center">
+  <div className="min-w-0">
+    <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-3 py-2 shadow-sm">
+      <ShieldCheck size={15} className="shrink-0 text-slate-700" />
 
-                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
-                  Angelbird Analytics Workspace
-                </span>
-              </div>
+      <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+        Data From Zendesk
+      </span>
+    </div>
 
-              <h1 className="mt-5 max-w-[850px] text-[clamp(2.4rem,4.2vw,4.7rem)] font-extrabold leading-[0.96] tracking-[-0.06em] text-slate-950">
-                Angelbird Reports &amp; Analytics.
-              </h1>
-              <p className="mt-5 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
-  Select a reporting month to view ticket and satisfaction analytics. Reports
-  are filtered automatically by the selected period.
-</p>
+    <h1 className="mt-5 max-w-[850px] text-[clamp(2.4rem,4.2vw,4.7rem)] font-extrabold leading-[0.96] tracking-[-0.06em] text-slate-950">
+      Angelbird Reports &amp; Analytics.
+    </h1>
 
-              <div className="mt-7 flex flex-wrap items-center gap-3">
-                <Link to="/reports" className="angel-btn angel-btn-lime">
-                  View Reports
-                </Link>
+    {/* <p className="mt-5 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
+      Upload ticket and satisfaction CSV sheets here. Reports use the full
+      uploaded dataset, and month/date filtering is handled inside the Ticket
+      and Satisfaction report filters.
+    </p> */}
 
-                {uploadAllowed ? (
-                  <>
-                    <a
-                      href="#data-import"
-                      className="angel-btn angel-btn-dark gap-2"
-                    >
-                      <UploadCloud size={17} />
-                      Upload Data
-                    </a>
+    <div className="mt-7 flex flex-wrap items-center gap-3">
+      <Link to="/reports" className="angel-btn angel-btn-lime">
+        View Reports
+      </Link>
 
-                    <button
-                      type="button"
-                      onClick={handleDeleteSelectedPeriod}
-                      disabled={actionBusy || !selectedPeriodKey}
-                      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-black text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {deletingPeriod ? (
-                        <Loader2 size={17} className="animate-spin" />
-                      ) : (
-                        <Trash2 size={17} />
-                      )}
+      {uploadAllowed ? (
+        <>
+          <a
+            href="#data-import"
+            className="angel-btn angel-btn-dark gap-2"
+          >
+            <UploadCloud size={17} />
+            Upload Data
+          </a>
 
-                      {deletingPeriod ? "Deleting Month..." : "Delete Month Data"}
-                    </button>
-                  </>
-                ) : null}
-              </div>
+          <button
+            type="button"
+            onClick={handleDeleteAllData}
+            disabled={actionBusy}
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-black text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {deletingData ? (
+              <Loader2 size={17} className="animate-spin" />
+            ) : (
+              <Trash2 size={17} />
+            )}
 
-              <div className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-2">
-                <CompactStat
-                  label="Tickets"
-                  value={databaseSummary.ticketCount}
-                  description={selectedPeriod?.period_name || "Selected period"}
-                />
+            {deletingData ? "Deleting Data..." : "Delete All Data"}
+          </button>
+        </>
+      ) : null}
+    </div>
 
-                <CompactStat
-                  label="Satisfaction"
-                  value={databaseSummary.satisfactionCount}
-                  description={selectedPeriod?.period_name || "Selected period"}
-                />
-              </div>
-            </div>
+    <div className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-2">
+      <CompactStat
+        label="Tickets"
+        value={databaseSummary.ticketCount}
+        description="All uploaded ticket records"
+      />
 
-            <div className="w-full min-w-0 self-center rounded-[26px] border border-slate-200 bg-white/95 p-5 shadow-sm">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="angel-mini-label">Reporting Period</p>
+      <CompactStat
+        label="Satisfaction"
+        value={databaseSummary.satisfactionCount}
+        description="All uploaded satisfaction records"
+      />
+    </div>
+  </div>
 
-                  <h2 className="mt-2 text-2xl font-extrabold tracking-[-0.04em] text-slate-950">
-                    {selectedPeriod?.period_name || "No period selected"}
-                  </h2>
+  <div className="w-full min-w-0 self-center rounded-[26px] border border-slate-200 bg-white/95 p-6 text-center shadow-sm">
+    <p className="angel-mini-label">
+      Presented By
+    </p>
 
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Select a month to view only that month’s saved records.
-                  </p>
-                </div>
+    <img
+      src="/mahi.logo.png"
+      alt="Mahimedia Solutions"
+      className="mx-auto mt-5 h-20 w-auto object-contain"
+    />
 
-                <div
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-slate-950"
-                  style={{
-                    background: "var(--accent-color)",
-                  }}
-                >
-                  <CalendarDays size={20} />
-                </div>
-              </div>
+   
+    <p className="mt-2 text-sm leading-6 text-slate-500">
+      Analytics dashboard prepared for Angelbird reporting and performance
+      review.
+    </p>
 
-              <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label htmlFor="reporting-year" className="angel-label">
-                    Year
-                  </label>
-
-                  <select
-                    id="reporting-year"
-                    className="angel-input"
-                    value={selectedYear}
-                    onChange={handleYearChange}
-                    disabled={actionBusy || !availableYears.length}
-                  >
-                    {!availableYears.length ? (
-                      <option value="">No years</option>
-                    ) : null}
-
-                    {availableYears.map((year) => (
-                      <option key={year} value={year}>
-                        {year}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label htmlFor="reporting-month" className="angel-label">
-                    Month
-                  </label>
-
-                  <select
-                    id="reporting-month"
-                    className="angel-input"
-                    value={selectedPeriodKey}
-                    onChange={handlePeriodChange}
-                    disabled={actionBusy || !selectedYearPeriods.length}
-                  >
-                    {!selectedYearPeriods.length ? (
-                      <option value="">No months</option>
-                    ) : null}
-
-                    {selectedYearPeriods.map((period) => (
-                      <option key={period.id} value={period.period_key}>
-                        {period.period_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() =>
-                  loadOverview({
-                    period: selectedPeriodKey,
-                  })
-                }
-                disabled={actionBusy || !selectedPeriodKey}
-                className="angel-btn angel-btn-dark mt-4 w-full gap-2 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {overviewLoading ? (
-                  <Loader2 size={17} className="animate-spin" />
-                ) : (
-                  <RefreshCw size={17} />
-                )}
-
-                Refresh Period
-              </button>
-            </div>
-          </div>
+    
+  </div>
+</div>
 
           {overviewError ? (
             <div className="mt-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">
@@ -756,23 +587,22 @@ export default function HomePage() {
                 <p className="angel-mini-label">Data Import</p>
 
                 <h2 className="mt-2 angel-page-title">
-                  Upload full CSV data.
+                  Upload CSV data.
                 </h2>
 
                 <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-500">
-                  Upload the complete ticket CSV and complete satisfaction CSV.
-                  The backend will automatically create month-wise records from
-                  the date columns.
+                  Upload tickets and satisfaction files. The backend will save
+                  records and reports will show the full uploaded dataset.
                 </p>
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
-                  Selected View
+                  Report View
                 </p>
 
                 <p className="mt-1 font-extrabold text-slate-900">
-                  {selectedPeriod?.period_name || "Select year and month"}
+                  Filter inside Reports
                 </p>
               </div>
             </div>
@@ -780,8 +610,8 @@ export default function HomePage() {
             <div className="grid items-stretch gap-6 xl:grid-cols-2">
               <CsvUploader
                 eyebrow="Ticket Data"
-                title="Upload Full Ticket CSV"
-                description="The system reads ticket dates and places each row into its matching month."
+                title="Upload Ticket CSV"
+                description="Upload ticket records. Month and date range filters are available in Reports."
                 buttonLabel={
                   importState.tickets
                     ? "Saving Ticket CSV..."
@@ -793,8 +623,8 @@ export default function HomePage() {
 
               <CsvUploader
                 eyebrow="Satisfaction Data"
-                title="Upload Full Satisfaction CSV"
-                description="The system reads updated dates and places each response into its matching month."
+                title="Upload Satisfaction CSV"
+                description="Upload satisfaction records. Month and date range filters are available in Reports."
                 buttonLabel={
                   importState.satisfaction
                     ? "Saving Satisfaction CSV..."
