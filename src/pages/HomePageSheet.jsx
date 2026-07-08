@@ -9,6 +9,7 @@ import {
   RefreshCw,
   ShieldCheck,
   SmilePlus,
+  Unlink,
 } from "lucide-react";
 
 import { Link } from "react-router-dom";
@@ -21,20 +22,17 @@ import {
 const featureCards = [
   {
     title: "Sheet Ticket Analytics",
-    description:
-      "Read ticket records directly from the  ticket tab.",
+    description: "Read ticket records directly from the ticket tab.",
     icon: FileSpreadsheet,
   },
   {
     title: "Sheet Satisfaction",
-    description:
-      "Read satisfaction responses directly from the  satisfaction tab.",
+    description: "Read satisfaction responses directly from the satisfaction tab.",
     icon: SmilePlus,
   },
   {
     title: "Live Sheet Reports",
-    description:
-      "Open reports and refresh anytime to load the latest  data.",
+    description: "Open reports and refresh anytime to load the latest data.",
     icon: BarChart3,
   },
 ];
@@ -61,7 +59,7 @@ function CompactStat({ label, value, description }) {
   );
 }
 
-function StatusNotice({ loading, message, error }) {
+function StatusNotice({ loading, message, error, unsynced }) {
   if (loading) {
     return (
       <div className="mt-6 flex items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sky-800">
@@ -84,8 +82,24 @@ function StatusNotice({ loading, message, error }) {
         <AlertCircle size={19} className="mt-0.5 shrink-0" />
 
         <div>
-          <p className="font-black"> Connection failed</p>
+          <p className="font-black">Connection failed</p>
           <p className="mt-1 text-sm leading-6">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (unsynced) {
+    return (
+      <div className="mt-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-800">
+        <Unlink size={19} className="mt-0.5 shrink-0" />
+
+        <div>
+          <p className="font-black">Sheet unsynced</p>
+          <p className="mt-1 text-sm leading-6">
+            Sheet data is cleared from this view. Click Refresh to load it
+            again.
+          </p>
         </div>
       </div>
     );
@@ -107,9 +121,8 @@ function StatusNotice({ loading, message, error }) {
   return null;
 }
 
-
 export default function HomePageSheet() {
-    const [unsynced, setUnsynced] = useState(false);
+  const [unsynced, setUnsynced] = useState(false);
   const [overview, setOverview] = useState(null);
   const [health, setHealth] = useState(null);
 
@@ -121,6 +134,7 @@ export default function HomePageSheet() {
     setLoading(true);
     setError("");
     setMessage("");
+    setUnsynced(false);
 
     try {
       const [healthResponse, overviewResponse] = await Promise.all([
@@ -144,18 +158,27 @@ export default function HomePageSheet() {
       setMessage(
         `${Number(ticketCount).toLocaleString()} tickets and ${Number(
           satisfactionCount
-        ).toLocaleString()} satisfaction records loaded from .`
+        ).toLocaleString()} satisfaction records loaded.`
       );
     } catch (loadError) {
       if (loadError.name === "AbortError") {
         return;
       }
 
-      setError(loadError.message || "Unable to load  overview.");
+      setError(loadError.message || "Unable to load overview.");
     } finally {
       setLoading(false);
     }
   }, []);
+
+  function handleUnsync() {
+    setOverview(null);
+    setHealth(null);
+    setMessage("");
+    setError("");
+    setUnsynced(true);
+    setLoading(false);
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -234,19 +257,35 @@ export default function HomePageSheet() {
                   )}
                   Refresh
                 </button>
+
+                <button
+                  type="button"
+                  onClick={handleUnsync}
+                  disabled={loading || unsynced}
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-black text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Unlink size={17} />
+                  Unsync
+                </button>
               </div>
 
               <div className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-2">
                 <CompactStat
                   label="Tickets"
-                  value={sheetSummary.ticketCount}
-                  description={` tab: ${sheetMeta.ticketTab}`}
+                  value={unsynced ? 0 : sheetSummary.ticketCount}
+                  description={
+                    unsynced ? "Sheet disconnected" : `tab: ${sheetMeta.ticketTab}`
+                  }
                 />
 
                 <CompactStat
                   label="Satisfaction"
-                  value={sheetSummary.satisfactionCount}
-                  description={` tab: ${sheetMeta.satisfactionTab}`}
+                  value={unsynced ? 0 : sheetSummary.satisfactionCount}
+                  description={
+                    unsynced
+                      ? "Sheet disconnected"
+                      : `tab: ${sheetMeta.satisfactionTab}`
+                  }
                 />
               </div>
             </div>
@@ -260,12 +299,7 @@ export default function HomePageSheet() {
                 className="mx-auto mt-5 h-20 w-auto object-contain"
               />
 
-              {/* <p className="mt-2 text-sm leading-6 text-slate-500">
-                Live  analytics dashboard prepared for Angelbird
-                reporting and performance review.
-              </p> */}
-
-              {sheetMeta.updatedAt ? (
+              {!unsynced && sheetMeta.updatedAt ? (
                 <p className="mt-4 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
                   Last loaded: {new Date(sheetMeta.updatedAt).toLocaleString()}
                 </p>
@@ -273,7 +307,12 @@ export default function HomePageSheet() {
             </div>
           </div>
 
-          <StatusNotice loading={loading} message={message} error={error} />
+          <StatusNotice
+            loading={loading}
+            message={message}
+            error={error}
+            unsynced={unsynced}
+          />
         </div>
       </section>
 

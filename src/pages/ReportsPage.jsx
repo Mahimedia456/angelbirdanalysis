@@ -146,12 +146,20 @@ function getTicketValue(row, keys) {
 
   return "Unknown";
 }
+function normalizeDisplayLabel(value) {
+  const text = cleanText(value);
 
+  if (normalizeKey(text) === "troubleshoot") {
+    return "Troubleshooting";
+  }
+
+  return text;
+}
 function makeSummary(rows, keys) {
   const map = new Map();
 
   rows.forEach((row) => {
-    const name = getTicketValue(row, keys);
+const name = normalizeDisplayLabel(getTicketValue(row, keys));
     const normalizedName = normalizeKey(name);
 
     if (!map.has(normalizedName)) {
@@ -776,11 +784,11 @@ function TicketTabbedTable({
                 </td>
 
                 <td className="min-w-[180px] px-4 py-3">
-                  {cleanText(
-                    ticket.supportCategory ||
-                      ticket.support_category ||
-                      ticket.category
-                  ) || "-"}
+                 {normalizeDisplayLabel(
+  ticket.supportCategory ||
+    ticket.support_category ||
+    ticket.category
+) || "-"}
                 </td>
 
                 <td className="min-w-[180px] px-4 py-3">
@@ -1125,7 +1133,7 @@ return (
   <div className="relative grid gap-8 xl:grid-cols-[1fr_0.8fr] xl:items-center">
     <div>
       <p className="text-xs font-black uppercase tracking-[0.28em] text-white/45">
-        All Data From Zendesk
+        Data From Zendesk
       </p>
 
       <h1 className="mt-4 max-w-3xl text-4xl font-black leading-none tracking-[-0.06em] md:text-6xl">
@@ -1133,8 +1141,8 @@ return (
       </h1>
 
       <p className="mt-5 max-w-2xl text-sm leading-6 text-white/65">
-        Reports load all uploaded records. Use Year, Month, Date From,
-        and Date To filters inside Ticket and Satisfaction reports.
+Reports read latest ticket and satisfaction records from Zendesk.
+
       </p>
     </div>
 

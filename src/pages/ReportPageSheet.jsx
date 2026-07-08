@@ -177,12 +177,21 @@ function getTicketValue(row, keys) {
 
   return "Unknown";
 }
+function normalizeDisplayLabel(value) {
+  const text = cleanText(value);
+
+  if (normalizeKey(text) === "troubleshoot") {
+    return "Troubleshooting";
+  }
+
+  return text;
+}
 
 function makeSummary(rows, keys) {
   const map = new Map();
 
   rows.forEach((row) => {
-    const name = getTicketValue(row, keys);
+    const name = normalizeDisplayLabel(getTicketValue(row, keys));
     const normalizedName = normalizeKey(name);
 
     if (!map.has(normalizedName)) {
@@ -805,11 +814,11 @@ function TicketTabbedTable({
                 </td>
 
                 <td className="min-w-[180px] px-4 py-3">
-                  {cleanText(
-                    ticket.supportCategory ||
-                      ticket.support_category ||
-                      ticket.category
-                  ) || "-"}
+                 {normalizeDisplayLabel(
+  ticket.supportCategory ||
+    ticket.support_category ||
+    ticket.category
+) || "-"}
                 </td>
 
                 <td className="min-w-[180px] px-4 py-3">
