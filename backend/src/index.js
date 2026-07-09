@@ -15,6 +15,7 @@ import reportingPeriodsRoutes from "./routes/reportingPeriods.routes.js";
 import settingsRoutes from "./routes/settings.routes.js";
 import aiSatisfactionRoutes from "./routes/aiSatisfaction.routes.js";
 import sheetReportsRoutes from "./routes/sheetReportsRoutes.js";
+import rmaReportsRoutes from "./routes/rmaReportsRoutes.js";
 
 const app = express();
 
@@ -138,6 +139,7 @@ app.use("/api/reporting-periods", reportingPeriodsRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/ai/satisfaction", aiSatisfactionRoutes);
 app.use("/api/sheets", sheetReportsRoutes);
+app.use("/api/rma", rmaReportsRoutes);
 
 app.use((request, response) => {
   response.status(404).json({

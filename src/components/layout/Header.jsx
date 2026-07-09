@@ -1,5 +1,4 @@
 import {
-  Eye,
   FileSpreadsheet,
   Home,
   Menu,
@@ -7,13 +6,21 @@ import {
   X,
 } from "lucide-react";
 
-import { useMemo, useState } from "react";
+import {
+  useMemo,
+  useState,
+} from "react";
 
-import { Link, NavLink } from "react-router-dom";
+import {
+  Link,
+  NavLink,
+} from "react-router-dom";
 
 import logo from "../../assets/logo.svg";
 
-import { useAuth } from "../../context/AuthContext";
+import {
+  useAuth,
+} from "../../context/AuthContext";
 
 import {
   canManageSettings,
@@ -22,7 +29,11 @@ import {
 
 import HeaderUserMenu from "./HeaderUserMenu";
 
-function NavigationLink({ item, onClick, mobile = false }) {
+function NavigationLink({
+  item,
+  onClick,
+  mobile = false,
+}) {
   const Icon = item.icon;
 
   return (
@@ -51,8 +62,14 @@ function NavigationLink({ item, onClick, mobile = false }) {
           : undefined
       }
     >
-      <Icon size={16} className="shrink-0" />
-      <span className="truncate">{item.label}</span>
+      <Icon
+        size={16}
+        className="shrink-0"
+      />
+
+      <span className="truncate">
+        {item.label}
+      </span>
     </NavLink>
   );
 }
@@ -60,22 +77,44 @@ function NavigationLink({ item, onClick, mobile = false }) {
 export default function Header() {
   const { user } = useAuth();
 
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] =
+    useState(false);
+
+  const [profileMenuOpen, setProfileMenuOpen] =
+    useState(false);
+
+  const normalizedRole = String(
+    user?.role || ""
+  )
+    .trim()
+    .toLowerCase();
+
+  const normalizedEmail = String(
+    user?.email || ""
+  )
+    .trim()
+    .toLowerCase();
+
+  const homeMenuAllowed = [
+    "owner",
+    "admin",
+  ].includes(normalizedRole);
 
   const sheetMenuAllowed =
-    String(user?.email || "").toLowerCase() ===
+    normalizedEmail ===
     "aamir@mahimediasolutions.com";
 
   const navItems = useMemo(() => {
     const items = [];
 
-    items.push({
-      label: "Home",
-      to: "/",
-      icon: Home,
-      end: true,
-    });
+    if (homeMenuAllowed) {
+      items.push({
+        label: "Home",
+        to: "/",
+        icon: Home,
+        end: true,
+      });
+    }
 
     if (canViewReports(user?.role)) {
       items.push({
@@ -108,7 +147,11 @@ export default function Header() {
     }
 
     return items;
-  }, [user?.role, sheetMenuAllowed]);
+  }, [
+    user?.role,
+    homeMenuAllowed,
+    sheetMenuAllowed,
+  ]);
 
   function closeMobileMenu() {
     setMobileMenuOpen(false);
@@ -119,15 +162,21 @@ export default function Header() {
   }
 
   function toggleProfileMenu() {
-    setProfileMenuOpen((current) => !current);
+    setProfileMenuOpen(
+      (current) => !current
+    );
   }
+
+  const logoDestination = homeMenuAllowed
+    ? "/"
+    : "/reports";
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
       <div className="angel-container">
         <div className="flex min-h-[76px] items-center justify-between gap-4">
           <Link
-            to="/"
+            to={logoDestination}
             onClick={() => {
               closeMobileMenu();
               closeProfileMenu();
@@ -155,7 +204,10 @@ export default function Header() {
 
           <nav className="hidden shrink-0 items-center gap-1 rounded-full border border-slate-200 bg-white p-1 shadow-sm lg:flex">
             {navItems.map((item) => (
-              <NavigationLink key={item.to} item={item} />
+              <NavigationLink
+                key={item.to}
+                item={item}
+              />
             ))}
           </nav>
 
@@ -169,14 +221,21 @@ export default function Header() {
             <button
               type="button"
               onClick={() => {
-                setMobileMenuOpen((current) => !current);
+                setMobileMenuOpen(
+                  (current) => !current
+                );
+
                 closeProfileMenu();
               }}
               className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-100 lg:hidden"
               aria-expanded={mobileMenuOpen}
               aria-label="Toggle navigation menu"
             >
-              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              {mobileMenuOpen ? (
+                <X size={20} />
+              ) : (
+                <Menu size={20} />
+              )}
             </button>
           </div>
         </div>
@@ -195,7 +254,10 @@ export default function Header() {
             </nav>
 
             <div className="mt-4">
-              <HeaderUserMenu compact onClose={closeMobileMenu} />
+              <HeaderUserMenu
+                compact
+                onClose={closeMobileMenu}
+              />
             </div>
           </div>
         ) : null}

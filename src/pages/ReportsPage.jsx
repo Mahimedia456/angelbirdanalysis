@@ -1124,46 +1124,62 @@ if (
 
 return (
   <div className="space-y-8 bg-white">
-      <section
+    <section
   id="reports-export-header"
-  className="relative overflow-hidden rounded-[38px] border border-slate-800 bg-slate-950 p-8 text-white shadow-soft md:p-10"
+  className="relative overflow-hidden rounded-[38px] border border-slate-200 bg-gradient-to-br from-slate-50 via-white to-slate-100 p-8 shadow-soft md:p-10"
 >
-  <div className="pointer-events-none absolute inset-0 angel-grid-bg opacity-10" />
+  <div className="pointer-events-none absolute inset-0 angel-grid-bg opacity-40" />
 
-  <div className="relative grid gap-8 xl:grid-cols-[1fr_0.8fr] xl:items-center">
-    <div>
-      <p className="text-xs font-black uppercase tracking-[0.28em] text-white/45">
-        Data From Zendesk
-      </p>
+  <div
+    className="pointer-events-none absolute -right-28 -top-32 h-80 w-80 rounded-full opacity-80 blur-3xl"
+    style={{
+      background: "var(--accent-color)",
+    }}
+  />
 
-      <h1 className="mt-4 max-w-3xl text-4xl font-black leading-none tracking-[-0.06em] md:text-6xl">
+  <div className="pointer-events-none absolute -bottom-40 left-[30%] h-72 w-72 rounded-full bg-sky-100/70 blur-3xl" />
+
+  <div className="relative grid gap-8 xl:grid-cols-[1fr_0.72fr] xl:items-center">
+    <div className="min-w-0">
+      <div className="inline-flex items-center rounded-full border border-slate-200 bg-white/90 px-4 py-2 shadow-sm">
+        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
+          Data From Zendesk
+        </p>
+      </div>
+
+      <h1 className="mt-5 max-w-3xl text-4xl font-black leading-none tracking-[-0.06em] text-slate-950 md:text-6xl">
         Analytics
       </h1>
 
-      <p className="mt-5 max-w-2xl text-sm leading-6 text-white/65">
-Reports read latest ticket and satisfaction records from Zendesk.
-
+      <p className="mt-5 max-w-2xl text-sm leading-6 text-slate-600">
+        Reports read latest ticket and satisfaction records from Zendesk.
       </p>
     </div>
 
-    <div className="flex flex-col items-start justify-center rounded-[30px] border border-white/10 bg-white/[0.04] p-6 text-white xl:items-end xl:text-right">
-      <p className="text-xs font-black uppercase tracking-[0.24em] text-white/45">
+    <div className="flex min-w-0 flex-col items-center justify-center rounded-[30px] border border-slate-200 bg-white/80 p-6 text-center shadow-sm backdrop-blur-xl xl:items-end xl:text-right">
+      <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
         Presented By
       </p>
 
-      <img
-        src="/mahi.logo.webp"
-        alt="Mahi Media Solutions"
-        className="mt-5 h-16 w-auto object-contain md:h-20"
-      />
+      <div className="mt-5 flex h-[72px] w-full max-w-[330px] items-center justify-center xl:justify-end">
+        <img
+          src="/mahi.logo.png"
+          alt="Mahimedia Solutions"
+          className="h-[72px] w-full max-w-[330px] object-contain"
+        />
+      </div>
 
-
-      <p className="mt-2 text-xs font-black uppercase tracking-[0.14em] text-white/40">
-        {mode === "tickets" ? "Ticket Analytics" : "Satisfaction Analytics"}
+      <p className="mt-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+        {mode === "tickets"
+          ? "Ticket Analytics"
+          : "Satisfaction Analytics"}
       </p>
     </div>
   </div>
 </section>
+
+
+
       <section className="no-print no-export rounded-[28px] border border-slate-200 bg-white p-4 shadow-soft">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div className="flex flex-wrap gap-2">
