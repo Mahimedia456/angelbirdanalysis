@@ -29,16 +29,19 @@ function ProtectedLayout() {
 function HomeRedirectByRole() {
   const { user } = useAuth();
 
-  const role =
+  const role = String(
     user?.role ||
-    user?.profile?.role ||
-    user?.app_metadata?.role ||
-    "";
+      user?.profile?.role ||
+      user?.app_metadata?.role ||
+      ""
+  )
+    .trim()
+    .toLowerCase();
 
   if (["analyst", "viewer"].includes(role)) {
     return (
       <Navigate
-        to="/reports"
+        to="/reports?type=tickets"
         replace
       />
     );
@@ -65,7 +68,7 @@ export default function App() {
           path="/dashboard"
           element={
             <Navigate
-              to="/reports"
+              to="/reports?type=tickets"
               replace
             />
           }

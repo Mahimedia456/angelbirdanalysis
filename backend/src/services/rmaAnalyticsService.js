@@ -1,3 +1,21 @@
+const ALLOWED_REGIONS = new Set([
+  "APAC",
+  "AUS",
+  "EMEA",
+  "NA",
+  "UAE",
+  "UK",
+  "US",
+]);
+
+const ALLOWED_RMA_TYPES = new Set([
+  "Broken Plastic",
+  "Data Recovery",
+  "Data Recovery RMA",
+  "Repair & Replaced",
+  "RMA",
+]);
+
 function cleanText(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ");
 }
@@ -97,33 +115,50 @@ function pick(row, keys) {
   return "";
 }
 
-function normalizeRmaType(value, subject = "") {
-  const text = normalizeKey(value);
-  const subjectText = normalizeKey(subject);
-  const combined = `${text} ${subjectText}`;
+function normalizeRegion(value) {
+  const raw = cleanText(value).toUpperCase();
 
-  if (combined.includes("data recovery")) return "Data Recovery RMA";
-  if (combined.includes("broken plastic")) return "Broken Plastic";
-  if (combined.includes("warranty")) return "RMA";
-  if (combined === "dr" || combined.includes(" dr ")) return "Data Recovery RMA";
-  if (combined.includes("rma")) return cleanText(value) || "RMA";
+  if (!raw) return "";
 
-  return cleanText(value);
+  if (raw === "NORTH AMERICA") return "NA";
+  if (raw === "UNITED STATES") return "US";
+  if (raw === "USA") return "US";
+  if (raw === "U.K.") return "UK";
+  if (raw === "UNITED KINGDOM") return "UK";
+
+  if (ALLOWED_REGIONS.has(raw)) {
+    return raw;
+  }
+
+  return "";
 }
 
-function isRmaRow(row) {
-  const rmaType = normalizeKey(row.rmaType);
-  const subject = normalizeKey(row.ticketSubject);
+function normalizeRmaType(value) {
+  const raw = cleanText(value);
+  const key = normalizeKey(raw);
 
-  return (
-    rmaType.includes("rma") ||
-    rmaType.includes("data recovery") ||
-    rmaType.includes("broken plastic") ||
-    subject.includes("rma") ||
-    subject.includes("data recovery") ||
-    subject.includes("warranty claim") ||
-    subject.includes("broken plastic")
-  );
+  if (!key) return "";
+
+  if (key === "dr") return "Data Recovery";
+  if (key === "data recovery") return "Data Recovery";
+
+  if (key === "dr rma") return "Data Recovery RMA";
+  if (key === "data recovery rma") return "Data Recovery RMA";
+  if (key === "date recovery rma") return "Data Recovery RMA";
+
+  if (key === "date recovery") return "Data Recovery";
+
+  if (key === "rma") return "RMA";
+
+  if (key === "broken plastic") return "Broken Plastic";
+  if (key === "broken plastics") return "Broken Plastic";
+
+  if (key === "repair & replaced") return "Repair & Replaced";
+  if (key === "repair and replaced") return "Repair & Replaced";
+  if (key === "repaired & replaced") return "Repair & Replaced";
+  if (key === "repair replaced") return "Repair & Replaced";
+
+  return "";
 }
 
 export function normalizeRmaRows(rows = []) {
@@ -135,23 +170,28 @@ export function normalizeRmaRows(rows = []) {
         "subject",
         "Ticket Subject",
         "ticket subject",
-        "ticket_subject",
       ]);
+
+      const region = normalizeRegion(
+        pick(row, [
+          "region",
+          "Region",
+        ])
+      );
 
       const rawRmaType = pick(row, [
         "rmaType",
         "rma_type",
         "RMA TYPE",
         "rma type",
-        "rma",
+        "RMA Type",
         "procedure",
         "Procedure",
-        "supportCategory",
-        "support_category",
-        "category",
       ]);
 
-      const item = {
+      const rmaType = normalizeRmaType(rawRmaType);
+
+      return {
         id: row.id || row.sheet_row_number || index + 1,
 
         tse: pick(row, [
@@ -171,12 +211,10 @@ export function normalizeRmaRows(rows = []) {
           "ticket_id",
           "Ticket number",
           "ticket number",
+          "Ticket Number",
         ]),
 
-        region: pick(row, [
-          "region",
-          "Region",
-        ]),
+        region,
 
         date: normalizeDate(
           pick(row, [
@@ -209,15 +247,15 @@ export function normalizeRmaRows(rows = []) {
 
         ticketSubject,
 
-        rmaType: normalizeRmaType(rawRmaType, ticketSubject),
+        rmaType,
 
         source: row.source || "",
       };
-
-      return item;
     })
-    .filter((row) => row.ticketNumber || row.rmaType || row.ticketSubject)
-    .filter(isRmaRow);
+    .filter((row) => row.ticketNumber)
+    .filter((row) => row.region)
+    .filter((row) => row.rmaType)
+    .filter((row) => ALLOWED_RMA_TYPES.has(row.rmaType));
 }
 
 export function deduplicateRmaRows(rows = []) {
@@ -239,7 +277,10 @@ function makeSummary(rows, getter) {
   const map = new Map();
 
   rows.forEach((row) => {
-    const name = cleanText(getter(row)) || "Unknown";
+    const name = cleanText(getter(row));
+
+    if (!name) return;
+
     const key = normalizeKey(name);
 
     if (!map.has(key)) {
@@ -267,7 +308,7 @@ function makeMonthSummary(rows) {
   return makeSummary(rows, (row) => {
     const date = cleanText(row.date);
 
-    if (!date || date.length < 7) return "Unknown";
+    if (!date || date.length < 7) return "";
 
     return date.slice(0, 7);
   }).sort((a, b) => String(a.name).localeCompare(String(b.name)));

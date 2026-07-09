@@ -5,7 +5,12 @@ import {
 } from "react";
 
 import {
+  useSearchParams,
+} from "react-router-dom";
+
+import {
   AlertCircle,
+  ClipboardList,
   FileSpreadsheet,
   Loader2,
   RefreshCw,
@@ -14,6 +19,10 @@ import {
 } from "lucide-react";
 
 import * as XLSX from "xlsx";
+
+import {
+  useAuth,
+} from "../context/AuthContext";
 
 import TicketFilters from "../components/tickets/TicketFilters";
 import TicketKpiCards from "../components/tickets/TicketKpiCards";
@@ -25,6 +34,11 @@ import SatisfactionKpiCards from "../components/satisfaction/SatisfactionKpiCard
 import SatisfactionAnalyticsPanel from "../components/satisfaction/SatisfactionAnalyticsPanel";
 import SatisfactionReportTable from "../components/satisfaction/SatisfactionReportTable";
 
+import RmaFilters from "../components/rma/RmaFilters";
+import RmaKpiCards from "../components/rma/RmaKpiCards";
+import RmaAnalyticsPanel from "../components/rma/RmaAnalyticsPanel";
+import RmaReportTable from "../components/rma/RmaReportTable";
+
 import {
   getChartSettings,
 } from "../utils/storage";
@@ -32,6 +46,10 @@ import {
 import {
   fetchSheetReportsData,
 } from "../services/sheetReportsApi";
+
+import {
+  fetchSheetRmaReports,
+} from "../services/rmaReportsApi";
 
 import {
   buildTicketAnalytics,
@@ -70,6 +88,41 @@ function normalizeDate(value) {
 
   if (iso) {
     return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  }
+
+  const textDate = raw.match(/^(\d{1,2})-([A-Za-z]{3,})-(\d{2,4})$/);
+
+  if (textDate) {
+    const day = Number(textDate[1]);
+    const monthName = textDate[2].slice(0, 3).toLowerCase();
+    let year = Number(textDate[3]);
+
+    if (year < 100) year += 2000;
+
+    const monthMap = {
+      jan: 1,
+      feb: 2,
+      mar: 3,
+      apr: 4,
+      may: 5,
+      jun: 6,
+      jul: 7,
+      aug: 8,
+      sep: 9,
+      oct: 10,
+      nov: 11,
+      dec: 12,
+    };
+
+    const month = monthMap[monthName];
+
+    if (month) {
+      return [
+        String(year).padStart(4, "0"),
+        String(month).padStart(2, "0"),
+        String(day).padStart(2, "0"),
+      ].join("-");
+    }
   }
 
   const slash = raw.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/);
@@ -177,6 +230,7 @@ function getTicketValue(row, keys) {
 
   return "Unknown";
 }
+
 function normalizeDisplayLabel(value) {
   const text = cleanText(value);
 
@@ -270,6 +324,54 @@ function makeTicketChartData(rows) {
       "product_1",
       "products",
     ]),
+  };
+}
+
+function makeRmaSummary(rows, getter) {
+  const map = new Map();
+
+  rows.forEach((row) => {
+    const name = cleanText(getter(row)) || "Unknown";
+    const key = normalizeKey(name);
+
+    if (!map.has(key)) {
+      map.set(key, {
+        name,
+        value: 0,
+      });
+    }
+
+    map.get(key).value += 1;
+  });
+
+  return Array.from(map.values()).sort(
+    (a, b) => Number(b.value || 0) - Number(a.value || 0)
+  );
+}
+
+function buildRmaAnalytics(rows = []) {
+  return {
+    totalRma: rows.length,
+
+    uniqueTickets: new Set(
+      rows.map((row) => cleanText(row.ticketNumber)).filter(Boolean)
+    ).size,
+
+    byRegion: makeRmaSummary(rows, (row) => row.region),
+
+    byTse: makeRmaSummary(rows, (row) => row.tse),
+
+    byRmaType: makeRmaSummary(rows, (row) => row.rmaType),
+
+    byDate: makeRmaSummary(rows, (row) => row.date).sort((a, b) =>
+      String(a.name).localeCompare(String(b.name))
+    ),
+
+    byMonth: makeRmaSummary(rows, (row) =>
+      row.date ? String(row.date).slice(0, 7) : "Unknown"
+    ).sort((a, b) => String(a.name).localeCompare(String(b.name))),
+
+    byProduct: makeRmaSummary(rows, (row) => row.product1 || row.product2),
   };
 }
 
@@ -443,6 +545,38 @@ function exportSatisfactionExcel({
   });
 }
 
+function exportRmaExcel({
+  rows,
+}) {
+  exportRowsToExcel({
+    rows,
+    filename: "angelbird-google-sheet-rma-report",
+    sheetName: "RMA Report",
+
+    mapRow: (row) => ({
+      TSE: row.tse || "",
+      "Ticket Number": row.ticketNumber || "",
+      Region: row.region || "",
+      Date: row.date || "",
+      "Product 1": row.product1 || "",
+      "Product 2": row.product2 || "",
+      "Ticket Subject": row.ticketSubject || "",
+      "RMA Type": row.rmaType || "",
+    }),
+
+    columnWidths: [
+      22,
+      16,
+      12,
+      15,
+      34,
+      34,
+      70,
+      24,
+    ],
+  });
+}
+
 const TICKET_TABLE_TABS = [
   {
     key: "all",
@@ -525,8 +659,8 @@ function EmptyDataState() {
         </h2>
 
         <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-500">
-          Add ticket or satisfaction records in the connected Google Sheet and
-          refresh this report.
+          Add ticket, satisfaction, or RMA records in the connected Google Sheet
+          and refresh this report.
         </p>
       </div>
     </section>
@@ -814,11 +948,11 @@ function TicketTabbedTable({
                 </td>
 
                 <td className="min-w-[180px] px-4 py-3">
-                 {normalizeDisplayLabel(
-  ticket.supportCategory ||
-    ticket.support_category ||
-    ticket.category
-) || "-"}
+                  {normalizeDisplayLabel(
+                    ticket.supportCategory ||
+                      ticket.support_category ||
+                      ticket.category
+                  ) || "-"}
                 </td>
 
                 <td className="min-w-[180px] px-4 py-3">
@@ -852,10 +986,41 @@ function TicketTabbedTable({
 }
 
 export default function ReportPageSheet() {
-  const [mode, setMode] = useState("tickets");
+  const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const normalizedRole = String(user?.role || "")
+    .trim()
+    .toLowerCase();
+
+  const isReadOnlyReportUser = [
+    "analyst",
+    "viewer",
+  ].includes(normalizedRole);
+
+  const reportType = searchParams.get("type");
+
+  const getValidReportType = (value) =>
+    ["tickets", "satisfaction", "rma"].includes(value)
+      ? value
+      : "tickets";
+
+  const [mode, setMode] = useState(() =>
+    getValidReportType(reportType)
+  );
+
+  function changeReportMode(nextMode) {
+    const validMode = getValidReportType(nextMode);
+
+    setMode(validMode);
+    setSearchParams({
+      type: validMode,
+    });
+  }
 
   const [ticketRows, setTicketRows] = useState([]);
   const [satisfactionRows, setSatisfactionRows] = useState([]);
+  const [rmaRows, setRmaRows] = useState([]);
 
   const [chartSettings, setChartSettings] = useState(getChartSettings());
 
@@ -884,6 +1049,27 @@ export default function ReportPageSheet() {
     dateTo: "",
   });
 
+  const [rmaFilters, setRmaFilters] = useState({
+    search: "",
+    year: "",
+    month: "",
+    region: "",
+    rmaType: "",
+    dateFrom: "",
+    dateTo: "",
+  });
+
+  useEffect(() => {
+    const validMode = getValidReportType(reportType);
+
+    if (validMode !== mode) {
+      setMode(validMode);
+    }
+  }, [
+    reportType,
+    mode,
+  ]);
+
   useEffect(() => {
     const controller = new AbortController();
 
@@ -901,14 +1087,20 @@ export default function ReportPageSheet() {
     setError("");
 
     try {
-      const data = await fetchSheetReportsData({
-        signal,
-      });
+      const [data, rmaData] = await Promise.all([
+        fetchSheetReportsData({
+          signal,
+        }),
+        fetchSheetRmaReports({
+          signal,
+        }).catch(() => null),
+      ]);
 
       const uniqueTickets = deduplicateTickets(data?.tickets || []);
 
       setTicketRows(uniqueTickets);
       setSatisfactionRows(data?.satisfaction || []);
+      setRmaRows(rmaData?.rows || []);
       setChartSettings(getChartSettings());
 
       resetFilters();
@@ -942,6 +1134,16 @@ export default function ReportPageSheet() {
       month: "",
       rating: "",
       solvedStatus: "",
+      dateFrom: "",
+      dateTo: "",
+    });
+
+    setRmaFilters({
+      search: "",
+      year: "",
+      month: "",
+      region: "",
+      rmaType: "",
       dateFrom: "",
       dateTo: "",
     });
@@ -1038,16 +1240,6 @@ export default function ReportPageSheet() {
     ticketFilters,
   ]);
 
-  const ticketAnalytics = useMemo(
-    () => buildTicketAnalytics(filteredTickets),
-    [filteredTickets]
-  );
-
-  const ticketChartData = useMemo(
-    () => makeTicketChartData(filteredTickets),
-    [filteredTickets]
-  );
-
   const filteredSatisfaction = useMemo(() => {
     return satisfactionRows.filter((row) => {
       const search = normalizeKey(satisfactionFilters.search);
@@ -1123,13 +1315,93 @@ export default function ReportPageSheet() {
     satisfactionFilters,
   ]);
 
+  const filteredRma = useMemo(() => {
+    return rmaRows.filter((row) => {
+      const search = normalizeKey(rmaFilters.search);
+
+      const searchable = [
+        row.tse,
+        row.ticketNumber,
+        row.region,
+        row.product1,
+        row.product2,
+        row.ticketSubject,
+        row.rmaType,
+      ]
+        .map(normalizeKey)
+        .join(" ");
+
+      if (search && !searchable.includes(search)) {
+        return false;
+      }
+
+      const rowDate = normalizeDate(row.date);
+      const rowYear = rowDate.slice(0, 4);
+      const rowMonth = rowDate.slice(5, 7);
+
+      if (rmaFilters.year && rowYear !== rmaFilters.year) {
+        return false;
+      }
+
+      if (rmaFilters.month && rowMonth !== rmaFilters.month) {
+        return false;
+      }
+
+      if (
+        rmaFilters.region &&
+        normalizeKey(row.region) !== normalizeKey(rmaFilters.region)
+      ) {
+        return false;
+      }
+
+      if (
+        rmaFilters.rmaType &&
+        normalizeKey(row.rmaType) !== normalizeKey(rmaFilters.rmaType)
+      ) {
+        return false;
+      }
+
+      if (rmaFilters.dateFrom && rowDate < rmaFilters.dateFrom) {
+        return false;
+      }
+
+      if (rmaFilters.dateTo && rowDate > rmaFilters.dateTo) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [
+    rmaRows,
+    rmaFilters,
+  ]);
+
+  const ticketAnalytics = useMemo(
+    () => buildTicketAnalytics(filteredTickets),
+    [filteredTickets]
+  );
+
+  const ticketChartData = useMemo(
+    () => makeTicketChartData(filteredTickets),
+    [filteredTickets]
+  );
+
   const satisfactionAnalytics = useMemo(
     () => buildSatisfactionAnalytics(filteredSatisfaction),
     [filteredSatisfaction]
   );
 
+  const rmaAnalytics = useMemo(
+    () => buildRmaAnalytics(filteredRma),
+    [filteredRma]
+  );
+
   const currentModeLabel =
-    mode === "tickets" ? "Ticket Report" : "Satisfaction Report";
+    mode === "tickets"
+      ? "Ticket Report"
+      : mode === "satisfaction"
+      ? "Satisfaction Report"
+      : "RMA Report";
 
   const exportTitle = `Angelbird Google Sheet ${currentModeLabel}`;
 
@@ -1143,63 +1415,98 @@ export default function ReportPageSheet() {
       return;
     }
 
-    exportSatisfactionExcel({
-      rows: filteredSatisfaction,
+    if (mode === "satisfaction") {
+      exportSatisfactionExcel({
+        rows: filteredSatisfaction,
+      });
+
+      return;
+    }
+
+    exportRmaExcel({
+      rows: filteredRma,
     });
   }
 
   const hasAnyData =
     ticketRows.length > 0 ||
-    satisfactionRows.length > 0;
+    satisfactionRows.length > 0 ||
+    rmaRows.length > 0;
 
   return (
     <div className="space-y-8 bg-white">
       <section
         id="reports-export-header"
-        className="relative overflow-hidden rounded-[38px] border border-slate-800 bg-slate-950 p-8 text-white shadow-soft md:p-10"
+        className="relative overflow-hidden rounded-[38px] border border-slate-200 bg-gradient-to-br from-slate-50 via-white to-slate-100 p-8 shadow-soft md:p-10"
       >
-        <div className="pointer-events-none absolute inset-0 angel-grid-bg opacity-10" />
+        <div className="pointer-events-none absolute inset-0 angel-grid-bg opacity-40" />
 
-        <div className="relative grid gap-8 xl:grid-cols-[1fr_0.8fr] xl:items-center">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.28em] text-white/45">
-              Data From Zendesk
-            </p>
+        <div
+          className="pointer-events-none absolute -right-28 -top-32 h-80 w-80 rounded-full opacity-80 blur-3xl"
+          style={{
+            background: "var(--accent-color)",
+          }}
+        />
 
-            <h1 className="mt-4 max-w-3xl text-4xl font-black leading-none tracking-[-0.06em] md:text-6xl">
-            Analytics
+        <div className="pointer-events-none absolute -bottom-40 left-[30%] h-72 w-72 rounded-full bg-sky-100/70 blur-3xl" />
+
+        <div className="relative grid gap-8 xl:grid-cols-[1fr_0.72fr] xl:items-center">
+          <div className="min-w-0">
+            <div className="inline-flex items-center rounded-full border border-slate-200 bg-white/90 px-4 py-2 shadow-sm">
+              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
+                Data From Google Sheet
+              </p>
+            </div>
+
+            <h1 className="mt-5 max-w-3xl text-4xl font-black leading-none tracking-[-0.06em] text-slate-950 md:text-6xl">
+              Sheet Analytics
             </h1>
 
-            <p className="mt-5 max-w-2xl text-sm leading-6 text-white/65">
-              Reports read latest ticket and satisfaction records from Zendesk. 
+            <p className="mt-5 max-w-2xl text-sm leading-6 text-slate-600">
+              Reports read latest ticket, satisfaction, and RMA records from
+              Google Sheet.
             </p>
           </div>
 
-          <div className="flex flex-col items-start justify-center rounded-[30px] border border-white/10 bg-white/[0.04] p-6 text-white xl:items-end xl:text-right">
-            <p className="text-xs font-black uppercase tracking-[0.24em] text-white/45">
+          <div className="flex min-w-0 flex-col items-center justify-center rounded-[30px] border border-slate-200 bg-white/80 p-6 text-center shadow-sm backdrop-blur-xl xl:items-end xl:text-right">
+            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
               Presented By
             </p>
 
-            <img
-              src="/mahi.logo.webp"
-              alt="Mahi Media Solutions"
-              className="mt-5 h-16 w-auto object-contain md:h-20"
-            />
+            <div className="mt-5 flex h-[72px] w-full max-w-[330px] items-center justify-center xl:justify-end">
+              <img
+                src="/mahi.logo.png"
+                alt="Mahimedia Solutions"
+                className="max-h-[58px] max-w-full object-contain"
+              />
+            </div>
 
-            <p className="mt-2 text-xs font-black uppercase tracking-[0.14em] text-white/40">
-              {mode === "tickets" ? "Ticket Analytics" : "Satisfaction Analytics"}
+            <p className="mt-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+              {mode === "tickets"
+                ? "Ticket Analytics"
+                : mode === "satisfaction"
+                ? "Satisfaction Analytics"
+                : "RMA Analytics"}
             </p>
           </div>
         </div>
       </section>
 
       <section className="no-print no-export rounded-[28px] border border-slate-200 bg-white p-4 shadow-soft">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-          <div className="flex flex-wrap gap-2">
+        <div
+          className={[
+            "flex flex-col gap-4 xl:flex-row xl:items-end",
+            isReadOnlyReportUser
+              ? "xl:justify-end"
+              : "xl:justify-between",
+          ].join(" ")}
+        >
+          {!isReadOnlyReportUser ? (
+            <div className="flex flex-wrap gap-2">
             <ReportModeButton
               active={mode === "tickets"}
               icon={FileSpreadsheet}
-              onClick={() => setMode("tickets")}
+              onClick={() => changeReportMode("tickets")}
             >
               Ticket Report
             </ReportModeButton>
@@ -1207,11 +1514,20 @@ export default function ReportPageSheet() {
             <ReportModeButton
               active={mode === "satisfaction"}
               icon={SmilePlus}
-              onClick={() => setMode("satisfaction")}
+              onClick={() => changeReportMode("satisfaction")}
             >
               Satisfaction Report
             </ReportModeButton>
+
+            <ReportModeButton
+              active={mode === "rma"}
+              icon={ClipboardList}
+              onClick={() => changeReportMode("rma")}
+            >
+              RMA Report
+            </ReportModeButton>
           </div>
+          ) : null}
 
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end xl:w-auto">
             <button
@@ -1346,7 +1662,7 @@ export default function ReportPageSheet() {
                 tickets={filteredTickets}
               />
             </>
-          ) : (
+          ) : mode === "satisfaction" ? (
             <>
               <div className="no-print no-export">
                 <SatisfactionFilters
@@ -1356,20 +1672,7 @@ export default function ReportPageSheet() {
                 />
               </div>
 
-              <section className="angel-section p-6 pdf-export-section">
-                <p className="angel-mini-label">
-                  Report Summary
-                </p>
-
-                <h2 className="mt-2 angel-page-title">
-                  Customer Satisfaction Summary
-                </h2>
-
-                <p className="mt-2 text-sm text-slate-500">
-                  Filtered responses: {filteredSatisfaction.length} from{" "}
-                  {satisfactionRows.length} total Google Sheet records.
-                </p>
-              </section>
+           
 
               <SatisfactionKpiCards analytics={satisfactionAnalytics} />
 
@@ -1383,6 +1686,30 @@ export default function ReportPageSheet() {
               <SatisfactionReportTable
                 title="Customer Satisfaction Report Data — Google Sheet"
                 rows={filteredSatisfaction}
+              />
+            </>
+          ) : (
+            <>
+              <div className="no-print no-export">
+                <RmaFilters
+                  rows={rmaRows}
+                  filters={rmaFilters}
+                  onChange={setRmaFilters}
+                />
+              </div>
+
+         
+
+              <RmaKpiCards analytics={rmaAnalytics} />
+
+              <RmaAnalyticsPanel
+                analytics={rmaAnalytics}
+                prefix="sheet-rma"
+              />
+
+              <RmaReportTable
+                title="RMA Report Data — Google Sheet"
+                rows={filteredRma}
               />
             </>
           )}

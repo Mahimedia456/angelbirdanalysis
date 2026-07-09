@@ -1,8 +1,10 @@
 import {
+  ClipboardList,
   FileSpreadsheet,
   Home,
   Menu,
   Palette,
+  SmilePlus,
   X,
 } from "lucide-react";
 
@@ -14,6 +16,7 @@ import {
 import {
   Link,
   NavLink,
+  useLocation,
 } from "react-router-dom";
 
 import logo from "../../assets/logo.svg";
@@ -35,32 +38,50 @@ function NavigationLink({
   mobile = false,
 }) {
   const Icon = item.icon;
+  const location = useLocation();
+
+  const queryType = new URLSearchParams(
+    location.search
+  ).get("type");
+
+  const isReportTabActive =
+    item.reportType &&
+    location.pathname === "/reports" &&
+    (queryType || "tickets") === item.reportType;
 
   return (
     <NavLink
       to={item.to}
       end={item.end}
       onClick={onClick}
-      className={({ isActive }) =>
-        [
+      className={({ isActive }) => {
+        const active = item.reportType
+          ? isReportTabActive
+          : isActive;
+
+        return [
           "inline-flex min-w-0 items-center gap-2 font-black transition",
           mobile
             ? "w-full rounded-2xl px-4 py-3 text-sm"
             : "rounded-full px-4 py-2.5 text-sm",
-          isActive
+          active
             ? "text-slate-950"
             : mobile
             ? "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
             : "text-slate-500 hover:bg-slate-100 hover:text-slate-950",
-        ].join(" ")
-      }
-      style={({ isActive }) =>
-        isActive
+        ].join(" ");
+      }}
+      style={({ isActive }) => {
+        const active = item.reportType
+          ? isReportTabActive
+          : isActive;
+
+        return active
           ? {
               background: "var(--accent-color)",
             }
-          : undefined
-      }
+          : undefined;
+      }}
     >
       <Icon
         size={16}
@@ -100,6 +121,11 @@ export default function Header() {
     "admin",
   ].includes(normalizedRole);
 
+  const readOnlyReportUser = [
+    "analyst",
+    "viewer",
+  ].includes(normalizedRole);
+
   const sheetMenuAllowed =
     normalizedEmail ===
     "aamir@mahimediasolutions.com";
@@ -117,11 +143,34 @@ export default function Header() {
     }
 
     if (canViewReports(user?.role)) {
-      items.push({
-        label: "Reports",
-        to: "/reports",
-        icon: FileSpreadsheet,
-      });
+      if (readOnlyReportUser) {
+        items.push({
+          label: "Ticket Report",
+          to: "/reports?type=tickets",
+          icon: FileSpreadsheet,
+          reportType: "tickets",
+        });
+
+        items.push({
+          label: "Satisfaction Report",
+          to: "/reports?type=satisfaction",
+          icon: SmilePlus,
+          reportType: "satisfaction",
+        });
+
+        items.push({
+          label: "RMA Report",
+          to: "/reports?type=rma",
+          icon: ClipboardList,
+          reportType: "rma",
+        });
+      } else {
+        items.push({
+          label: "Reports",
+          to: "/reports?type=tickets",
+          icon: FileSpreadsheet,
+        });
+      }
     }
 
     if (sheetMenuAllowed) {
@@ -133,7 +182,7 @@ export default function Header() {
 
       items.push({
         label: "Sheet Reports",
-        to: "/sheet-reports",
+        to: "/sheet-reports?type=tickets",
         icon: FileSpreadsheet,
       });
     }
@@ -150,6 +199,7 @@ export default function Header() {
   }, [
     user?.role,
     homeMenuAllowed,
+    readOnlyReportUser,
     sheetMenuAllowed,
   ]);
 
@@ -169,7 +219,7 @@ export default function Header() {
 
   const logoDestination = homeMenuAllowed
     ? "/"
-    : "/reports";
+    : "/reports?type=tickets";
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">

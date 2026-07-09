@@ -157,9 +157,7 @@ export default function LoginPage() {
             Angelbird Reporting
           </p>
 
-          <p className="mt-1 text-xs font-semibold text-slate-500">
-            Ticket Analytics · Product Master
-          </p>
+         
         </div>
 
         <section className="overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.10)]">
