@@ -19,20 +19,48 @@ function normalizeTicketNumber(value) {
     .toLowerCase();
 }
 
-function isRmaProcedure(row) {
+function normalizeProcedure(value) {
+  const text = clean(value);
+
+  if (text === "dr") return "Data Recovery";
+  if (text === "data recovery") return "Data Recovery";
+
+  if (text === "dr rma") return "Data Recovery RMA";
+  if (text === "data recovery rma") return "Data Recovery RMA";
+  if (text === "date recovery rma") return "Data Recovery RMA";
+
+  if (text === "rma") return "RMA";
+
+  if (text === "broken plastic") return "Broken Plastic";
+  if (text === "broken plastics") return "Broken Plastic";
+
+  if (text === "repair & replaced") return "Repair & Replaced";
+  if (text === "repair and replaced") return "Repair & Replaced";
+
+  return String(value || "").trim();
+}
+
+function isImportantProcedure(row) {
   const procedure = clean(row.procedure || row.Procedure);
 
-  return (
-    procedure.includes("rma") ||
-    procedure.includes("broken plastic") ||
-    procedure.includes("warranty claim")
-  );
+  return [
+    "dr",
+    "data recovery",
+    "dr rma",
+    "data recovery rma",
+    "date recovery rma",
+    "rma",
+    "broken plastic",
+    "broken plastics",
+    "repair & replaced",
+    "repair and replaced",
+  ].includes(procedure);
 }
 
 function getTicketDedupeScore(row) {
   let score = 0;
 
-  if (isRmaProcedure(row)) score += 100;
+  if (isImportantProcedure(row)) score += 100;
   if (row.procedure) score += 10;
   if (row.support_category) score += 8;
   if (row.product_category) score += 6;
@@ -44,7 +72,12 @@ function getTicketDedupeScore(row) {
 }
 
 function mergeTicketRows(current, candidate) {
-  if (!current) return candidate;
+  if (!current) {
+    return {
+      ...candidate,
+      procedure: normalizeProcedure(candidate.procedure),
+    };
+  }
 
   const currentScore = getTicketDedupeScore(current);
   const candidateScore = getTicketDedupeScore(candidate);
@@ -57,9 +90,9 @@ function mergeTicketRows(current, candidate) {
     ...base,
 
     procedure:
-      isRmaProcedure(base)
-        ? "RMA"
-        : base.procedure || fallback.procedure || null,
+      normalizeProcedure(base.procedure) ||
+      normalizeProcedure(fallback.procedure) ||
+      null,
 
     ticket_subject:
       base.ticket_subject ||
