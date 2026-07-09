@@ -16,12 +16,35 @@ import LoginPage from "./pages/auth/LoginPage";
 import HomePageSheet from "./pages/HomePageSheet";
 import ReportPageSheet from "./pages/ReportPageSheet";
 
+import { useAuth } from "./context/AuthContext";
+
 function ProtectedLayout() {
   return (
     <ProtectedRoute>
       <AppLayout />
     </ProtectedRoute>
   );
+}
+
+function HomeRedirectByRole() {
+  const { user } = useAuth();
+
+  const role =
+    user?.role ||
+    user?.profile?.role ||
+    user?.app_metadata?.role ||
+    "";
+
+  if (["analyst", "viewer"].includes(role)) {
+    return (
+      <Navigate
+        to="/reports"
+        replace
+      />
+    );
+  }
+
+  return <HomePage />;
 }
 
 export default function App() {
@@ -35,7 +58,7 @@ export default function App() {
       <Route element={<ProtectedLayout />}>
         <Route
           index
-          element={<HomePage />}
+          element={<HomeRedirectByRole />}
         />
 
         <Route

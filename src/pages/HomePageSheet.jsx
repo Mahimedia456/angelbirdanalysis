@@ -1,9 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import {
   AlertCircle,
   BarChart3,
   CheckCircle2,
+  ClipboardList,
   FileSpreadsheet,
   Loader2,
   RefreshCw,
@@ -19,6 +25,10 @@ import {
   fetchSheetHomeOverview,
 } from "../services/sheetReportsApi";
 
+import {
+  fetchSheetRmaReports,
+} from "../services/rmaReportsApi";
+
 const featureCards = [
   {
     title: "Sheet Ticket Analytics",
@@ -31,13 +41,23 @@ const featureCards = [
     icon: SmilePlus,
   },
   {
+    title: "Sheet RMA Analytics",
+    description:
+      "Read RMA records from the RMA tab or ticket tab and analyze type, region, date and month.",
+    icon: ClipboardList,
+  },
+  {
     title: "Live Sheet Reports",
     description: "Open reports and refresh anytime to load the latest data.",
     icon: BarChart3,
   },
 ];
 
-function CompactStat({ label, value, description }) {
+function CompactStat({
+  label,
+  value,
+  description,
+}) {
   return (
     <article className="min-w-0 rounded-[22px] border border-slate-200 bg-white/95 px-5 py-5 shadow-sm">
       <div className="flex items-start justify-between gap-4">
@@ -59,7 +79,12 @@ function CompactStat({ label, value, description }) {
   );
 }
 
-function StatusNotice({ loading, message, error, unsynced }) {
+function StatusNotice({
+  loading,
+  message,
+  error,
+  unsynced,
+}) {
   if (loading) {
     return (
       <div className="mt-6 flex items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sky-800">
@@ -67,9 +92,10 @@ function StatusNotice({ loading, message, error, unsynced }) {
 
         <div>
           <p className="font-black">Loading data</p>
+
           <p className="mt-1 text-sm leading-6">
-            Latest ticket and satisfaction records are being read from Google
-            Sheet.
+            Latest ticket, satisfaction, and RMA records are being read from
+            Google Sheet.
           </p>
         </div>
       </div>
@@ -96,6 +122,7 @@ function StatusNotice({ loading, message, error, unsynced }) {
 
         <div>
           <p className="font-black">Sheet unsynced</p>
+
           <p className="mt-1 text-sm leading-6">
             Sheet data is cleared from this view. Click Refresh to load it
             again.
@@ -123,8 +150,10 @@ function StatusNotice({ loading, message, error, unsynced }) {
 
 export default function HomePageSheet() {
   const [unsynced, setUnsynced] = useState(false);
+
   const [overview, setOverview] = useState(null);
   const [health, setHealth] = useState(null);
+  const [rmaOverview, setRmaOverview] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -137,13 +166,16 @@ export default function HomePageSheet() {
     setUnsynced(false);
 
     try {
-      const [healthResponse, overviewResponse] = await Promise.all([
-        fetchSheetApiHealth({ signal }),
-        fetchSheetHomeOverview({ signal }),
-      ]);
+      const [healthResponse, overviewResponse, rmaResponse] =
+        await Promise.all([
+          fetchSheetApiHealth({ signal }),
+          fetchSheetHomeOverview({ signal }),
+          fetchSheetRmaReports({ signal }).catch(() => null),
+        ]);
 
       setHealth(healthResponse);
       setOverview(overviewResponse);
+      setRmaOverview(rmaResponse);
 
       const ticketCount =
         overviewResponse?.periodSummary?.ticketCount ||
@@ -155,10 +187,16 @@ export default function HomePageSheet() {
         overviewResponse?.summary?.satisfactionCount ||
         0;
 
+      const rmaCount =
+        rmaResponse?.summary?.totalRows ||
+        0;
+
       setMessage(
-        `${Number(ticketCount).toLocaleString()} tickets and ${Number(
+        `${Number(ticketCount).toLocaleString()} tickets, ${Number(
           satisfactionCount
-        ).toLocaleString()} satisfaction records loaded.`
+        ).toLocaleString()} satisfaction records and ${Number(
+          rmaCount
+        ).toLocaleString()} RMA records loaded.`
       );
     } catch (loadError) {
       if (loadError.name === "AbortError") {
@@ -174,6 +212,7 @@ export default function HomePageSheet() {
   function handleUnsync() {
     setOverview(null);
     setHealth(null);
+    setRmaOverview(null);
     setMessage("");
     setError("");
     setUnsynced(true);
@@ -199,17 +238,24 @@ export default function HomePageSheet() {
     productCount: 0,
   };
 
+  const rmaSummary = rmaOverview?.summary || {
+    totalRows: 0,
+    duplicateRows: 0,
+  };
+
   const sheetMeta = useMemo(
     () => ({
       sheetId: overview?.sheetId || "",
       ticketTab: overview?.tabs?.tickets || "Ticket",
       satisfactionTab: overview?.tabs?.satisfaction || "Satisfaction",
+      rmaTab: rmaOverview?.tab || "RMA / Ticket",
       updatedAt:
         overview?.summary?.updatedAt ||
+        rmaOverview?.summary?.generatedAt ||
         health?.timestamp ||
         "",
     }),
-    [overview, health]
+    [overview, health, rmaOverview]
   );
 
   return (
@@ -231,12 +277,12 @@ export default function HomePageSheet() {
                 <ShieldCheck size={15} className="shrink-0 text-slate-700" />
 
                 <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
-                  Data From Zendesk
+                  Data From Google Sheet
                 </span>
               </div>
 
               <h1 className="mt-5 max-w-[850px] text-[clamp(2.4rem,4.2vw,4.7rem)] font-extrabold leading-[0.96] tracking-[-0.06em] text-slate-950">
-                Angelbird Reports.
+                Angelbird Sheet Reports.
               </h1>
 
               <div className="mt-7 flex flex-wrap items-center gap-3">
@@ -255,6 +301,7 @@ export default function HomePageSheet() {
                   ) : (
                     <RefreshCw size={17} />
                   )}
+
                   Refresh
                 </button>
 
@@ -269,12 +316,14 @@ export default function HomePageSheet() {
                 </button>
               </div>
 
-              <div className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-2">
+              <div className="mt-8 grid max-w-4xl gap-3 sm:grid-cols-3">
                 <CompactStat
                   label="Tickets"
                   value={unsynced ? 0 : sheetSummary.ticketCount}
                   description={
-                    unsynced ? "Sheet disconnected" : `tab: ${sheetMeta.ticketTab}`
+                    unsynced
+                      ? "Sheet disconnected"
+                      : `tab: ${sheetMeta.ticketTab}`
                   }
                 />
 
@@ -285,6 +334,16 @@ export default function HomePageSheet() {
                     unsynced
                       ? "Sheet disconnected"
                       : `tab: ${sheetMeta.satisfactionTab}`
+                  }
+                />
+
+                <CompactStat
+                  label="RMA"
+                  value={unsynced ? 0 : rmaSummary.totalRows}
+                  description={
+                    unsynced
+                      ? "Sheet disconnected"
+                      : `tab: ${sheetMeta.rmaTab}`
                   }
                 />
               </div>
@@ -316,7 +375,7 @@ export default function HomePageSheet() {
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-4">
         {featureCards.map((feature) => {
           const Icon = feature.icon;
 

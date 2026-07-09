@@ -9,6 +9,7 @@ import {
   AlertCircle,
   BarChart3,
   CheckCircle2,
+  ClipboardList,
   FileSpreadsheet,
   Loader2,
   ShieldCheck,
@@ -38,6 +39,10 @@ import { importMonthlyDataset } from "../services/importsApi";
 import {
   deleteSelectedPeriodData,
 } from "../services/dataManagementApi";
+
+import {
+  fetchUploadedRmaReports,
+} from "../services/rmaReportsApi";
 
 import {
   clearAllData,
@@ -77,9 +82,15 @@ const featureCards = [
     icon: SmilePlus,
   },
   {
+    title: "RMA Analytics",
+    description:
+      "Analyze RMA, Data Recovery RMA, Broken Plastic, region-wise and date-wise records from uploaded tickets.",
+    icon: ClipboardList,
+  },
+  {
     title: "Reports",
     description:
-      "Open Reports to filter tickets and satisfaction records directly inside each report.",
+      "Open Reports to filter tickets, satisfaction, and RMA records directly inside each report.",
     icon: BarChart3,
   },
 ];
@@ -183,6 +194,7 @@ export default function HomePage() {
 
   const [overview, setOverview] = useState(null);
   const [health, setHealth] = useState(null);
+  const [rmaOverview, setRmaOverview] = useState(null);
 
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [overviewError, setOverviewError] = useState("");
@@ -224,13 +236,16 @@ export default function HomePage() {
     setOverviewError("");
 
     try {
-      const [healthResponse, overviewResponse] = await Promise.all([
-        fetchApiHealth({ signal }),
-        fetchHomeOverview({ signal }),
-      ]);
+      const [healthResponse, overviewResponse, rmaResponse] =
+        await Promise.all([
+          fetchApiHealth({ signal }),
+          fetchHomeOverview({ signal }),
+          fetchUploadedRmaReports({ signal }).catch(() => null),
+        ]);
 
       setHealth(healthResponse);
       setOverview(overviewResponse);
+      setRmaOverview(rmaResponse);
     } catch (error) {
       if (error.name === "AbortError") {
         return;
@@ -261,6 +276,11 @@ export default function HomePage() {
     productCount: 0,
     satisfactionCount: 0,
     importBatchCount: 0,
+  };
+
+  const rmaSummary = rmaOverview?.summary || {
+    totalRows: 0,
+    duplicateRows: 0,
   };
 
   const localSummary = useMemo(
@@ -440,93 +460,90 @@ export default function HomePage() {
 
         <div className="relative px-6 py-8 sm:px-8 lg:px-10 lg:py-10">
           <div className="grid gap-8 xl:grid-cols-[1fr_390px] xl:items-center">
-  <div className="min-w-0">
-    <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-3 py-2 shadow-sm">
-      <ShieldCheck size={15} className="shrink-0 text-slate-700" />
+            <div className="min-w-0">
+              <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-3 py-2 shadow-sm">
+                <ShieldCheck size={15} className="shrink-0 text-slate-700" />
 
-      <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
-        Data From Zendesk
-      </span>
-    </div>
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                  Data From Zendesk
+                </span>
+              </div>
 
-    <h1 className="mt-5 max-w-[850px] text-[clamp(2.4rem,4.2vw,4.7rem)] font-extrabold leading-[0.96] tracking-[-0.06em] text-slate-950">
-      Angelbird Reports &amp; Analytics.
-    </h1>
+              <h1 className="mt-5 max-w-[850px] text-[clamp(2.4rem,4.2vw,4.7rem)] font-extrabold leading-[0.96] tracking-[-0.06em] text-slate-950">
+                Angelbird Reports &amp; Analytics.
+              </h1>
 
-    {/* <p className="mt-5 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
-      Upload ticket and satisfaction CSV sheets here. Reports use the full
-      uploaded dataset, and month/date filtering is handled inside the Ticket
-      and Satisfaction report filters.
-    </p> */}
+              <div className="mt-7 flex flex-wrap items-center gap-3">
+                <Link to="/reports" className="angel-btn angel-btn-lime">
+                  View Reports
+                </Link>
 
-    <div className="mt-7 flex flex-wrap items-center gap-3">
-      <Link to="/reports" className="angel-btn angel-btn-lime">
-        View Reports
-      </Link>
+                {uploadAllowed ? (
+                  <>
+                    <a
+                      href="#data-import"
+                      className="angel-btn angel-btn-dark gap-2"
+                    >
+                      <UploadCloud size={17} />
+                      Upload Data
+                    </a>
 
-      {uploadAllowed ? (
-        <>
-          <a
-            href="#data-import"
-            className="angel-btn angel-btn-dark gap-2"
-          >
-            <UploadCloud size={17} />
-            Upload Data
-          </a>
+                    <button
+                      type="button"
+                      onClick={handleDeleteAllData}
+                      disabled={actionBusy}
+                      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-black text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {deletingData ? (
+                        <Loader2 size={17} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={17} />
+                      )}
 
-          <button
-            type="button"
-            onClick={handleDeleteAllData}
-            disabled={actionBusy}
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-black text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {deletingData ? (
-              <Loader2 size={17} className="animate-spin" />
-            ) : (
-              <Trash2 size={17} />
-            )}
+                      {deletingData ? "Deleting Data..." : "Delete All Data"}
+                    </button>
+                  </>
+                ) : null}
+              </div>
 
-            {deletingData ? "Deleting Data..." : "Delete All Data"}
-          </button>
-        </>
-      ) : null}
-    </div>
+              <div className="mt-8 grid max-w-4xl gap-3 sm:grid-cols-3">
+                <CompactStat
+                  label="Tickets"
+                  value={databaseSummary.ticketCount}
+                  description="All uploaded ticket records"
+                />
 
-    <div className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-2">
-      <CompactStat
-        label="Tickets"
-        value={databaseSummary.ticketCount}
-        description="All uploaded ticket records"
-      />
+                <CompactStat
+                  label="Satisfaction"
+                  value={databaseSummary.satisfactionCount}
+                  description="All uploaded satisfaction records"
+                />
 
-      <CompactStat
-        label="Satisfaction"
-        value={databaseSummary.satisfactionCount}
-        description="All uploaded satisfaction records"
-      />
-    </div>
-  </div>
+                <CompactStat
+                  label="RMA"
+                  value={rmaSummary.totalRows}
+                  description="Unique RMA records from tickets"
+                />
+              </div>
+            </div>
 
-  <div className="w-full min-w-0 self-center rounded-[26px] border border-slate-200 bg-white/95 p-6 text-center shadow-sm">
-    <p className="angel-mini-label">
-      Presented By
-    </p>
+            <div className="w-full min-w-0 self-center rounded-[26px] border border-slate-200 bg-white/95 p-6 text-center shadow-sm">
+              <p className="angel-mini-label">
+                Presented By
+              </p>
 
-    <img
-      src="/mahi.logo.png"
-      alt="Mahimedia Solutions"
-      className="mx-auto mt-5 h-20 w-auto object-contain"
-    />
+              <img
+                src="/mahi.logo.png"
+                alt="Mahimedia Solutions"
+                className="mx-auto mt-5 h-20 w-auto object-contain"
+              />
 
-   
-    <p className="mt-2 text-sm leading-6 text-slate-500">
-      Analytics dashboard prepared for Angelbird reporting and performance
-      review.
-    </p>
-
-    
-  </div>
-</div>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                Analytics dashboard prepared for Angelbird reporting and
+                performance review.
+              </p>
+            </div>
+          </div>
 
           {overviewError ? (
             <div className="mt-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">
@@ -548,7 +565,7 @@ export default function HomePage() {
       </section>
 
       {uploadAllowed ? (
-        <section className="grid gap-4 md:grid-cols-3">
+        <section className="grid gap-4 md:grid-cols-4">
           {featureCards.map((feature) => {
             const Icon = feature.icon;
 
@@ -593,6 +610,7 @@ export default function HomePage() {
                 <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-500">
                   Upload tickets and satisfaction files. The backend will save
                   records and reports will show the full uploaded dataset.
+                  RMA analytics are extracted from uploaded ticket records.
                 </p>
               </div>
 
@@ -611,7 +629,7 @@ export default function HomePage() {
               <CsvUploader
                 eyebrow="Ticket Data"
                 title="Upload Ticket CSV"
-                description="Upload ticket records. Month and date range filters are available in Reports."
+                description="Upload ticket records. RMA records are extracted from ticket RMA Type, Procedure, Support Category, Subject, or related fields."
                 buttonLabel={
                   importState.tickets
                     ? "Saving Ticket CSV..."
