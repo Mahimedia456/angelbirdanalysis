@@ -3,7 +3,6 @@ import {
   FileSpreadsheet,
   Home,
   Menu,
-  Palette,
   SmilePlus,
   X,
 } from "lucide-react";
@@ -26,7 +25,6 @@ import {
 } from "../../context/AuthContext";
 
 import {
-  canManageSettings,
   canViewReports,
 } from "../../utils/permissions";
 
@@ -110,25 +108,10 @@ export default function Header() {
     .trim()
     .toLowerCase();
 
-  const normalizedEmail = String(
-    user?.email || ""
-  )
-    .trim()
-    .toLowerCase();
-
   const homeMenuAllowed = [
     "owner",
     "admin",
   ].includes(normalizedRole);
-
-  const readOnlyReportUser = [
-    "analyst",
-    "viewer",
-  ].includes(normalizedRole);
-
-  const sheetMenuAllowed =
-    normalizedEmail ===
-    "aamir@mahimediasolutions.com";
 
   const navItems = useMemo(() => {
     const items = [];
@@ -143,55 +126,25 @@ export default function Header() {
     }
 
     if (canViewReports(user?.role)) {
-      if (readOnlyReportUser) {
-        items.push({
-          label: "Ticket Report",
-          to: "/reports?type=tickets",
-          icon: FileSpreadsheet,
-          reportType: "tickets",
-        });
-
-        items.push({
-          label: "Satisfaction Report",
-          to: "/reports?type=satisfaction",
-          icon: SmilePlus,
-          reportType: "satisfaction",
-        });
-
-        items.push({
-          label: "RMA Report",
-          to: "/reports?type=rma",
-          icon: ClipboardList,
-          reportType: "rma",
-        });
-      } else {
-        items.push({
-          label: "Reports",
-          to: "/reports?type=tickets",
-          icon: FileSpreadsheet,
-        });
-      }
-    }
-
-    if (sheetMenuAllowed) {
       items.push({
-        label: "Sheet Home",
-        to: "/sheet-home",
-        icon: Home,
-      });
-
-      items.push({
-        label: "Sheet Reports",
-        to: "/sheet-reports?type=tickets",
+        label: "Ticket Report",
+        to: "/reports?type=tickets",
         icon: FileSpreadsheet,
+        reportType: "tickets",
       });
-    }
 
-    if (canManageSettings(user?.role)) {
       items.push({
-        label: "Settings",
-        to: "/settings",
-        icon: Palette,
+        label: "Satisfaction Report",
+        to: "/reports?type=satisfaction",
+        icon: SmilePlus,
+        reportType: "satisfaction",
+      });
+
+      items.push({
+        label: "RMA Report",
+        to: "/reports?type=rma",
+        icon: ClipboardList,
+        reportType: "rma",
       });
     }
 
@@ -199,8 +152,6 @@ export default function Header() {
   }, [
     user?.role,
     homeMenuAllowed,
-    readOnlyReportUser,
-    sheetMenuAllowed,
   ]);
 
   function closeMobileMenu() {
@@ -247,7 +198,7 @@ export default function Header() {
               </p>
 
               <p className="mt-0.5 hidden truncate text-xs font-semibold text-slate-500 sm:block">
-                Tickets · Satisfaction Reports
+                Tickets · Satisfaction · RMA
               </p>
             </div>
           </Link>
