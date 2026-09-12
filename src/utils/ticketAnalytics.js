@@ -1,13 +1,3 @@
-const ALLOWED_REGIONS = new Set([
-  "APAC",
-  "AUS",
-  "EMEA",
-  "NA",
-  "UAE",
-  "UK",
-  "US",
-]);
-
 const ALLOWED_RMA_TYPES = new Set([
   "broken plastic",
   "data recovery",
@@ -31,18 +21,6 @@ function normalizeText(value) {
   return safeText(value).toLowerCase().replace(/\s+/g, " ");
 }
 
-function normalizeRegion(value) {
-  const raw = safeText(value).toUpperCase();
-
-  if (raw === "USA") return "US";
-  if (raw === "UNITED STATES") return "US";
-  if (raw === "NORTH AMERICA") return "NA";
-  if (raw === "U.K.") return "UK";
-  if (raw === "UNITED KINGDOM") return "UK";
-
-  return ALLOWED_REGIONS.has(raw) ? raw : "";
-}
-
 function getField(ticket, key) {
   const aliases = {
     support_category: [
@@ -52,7 +30,14 @@ function getField(ticket, key) {
     ],
     product_category: [ticket.product_category, ticket.productCategory],
     ticket_subject: [ticket.ticket_subject, ticket.ticketSubject, ticket.subject],
-    procedure: [ticket.procedure, ticket.Procedure],
+    procedure: [
+      ticket.procedure,
+      ticket.Procedure,
+      ticket.ticket_procedure,
+      ticket.ticketProcedure,
+      ticket["Ticket Procedure"],
+    ],
+    rma_type: [ticket.rma_type, ticket.rmaType, ticket.RMAType, ticket["RMA Type"]],
     region: [ticket.region],
     tse: [ticket.tse, ticket.TSE, ticket.agent, ticket.engineer],
   };
@@ -111,26 +96,37 @@ function dedupeByTicketNumber(rows = []) {
   });
 }
 
-function isValidRmaRegion(ticket) {
-  return Boolean(normalizeRegion(getField(ticket, "region")));
+function getRmaClassificationValues(ticket) {
+  return [
+    getField(ticket, "procedure"),
+    getField(ticket, "rma_type"),
+    getField(ticket, "support_category"),
+    getField(ticket, "ticket_subject"),
+  ]
+    .map(normalizeProcedure)
+    .filter(Boolean);
 }
 
 function isDataRecoveryProcedure(ticket) {
-  const procedure = normalizeProcedure(getField(ticket, "procedure"));
-
-  return procedure === "data recovery";
+  return getRmaClassificationValues(ticket).some((value) =>
+    value === "data recovery" ||
+    value === "data recovery rma" ||
+    value.includes("data recovery")
+  );
 }
 
 function isRmaOnlyProcedure(ticket) {
-  const procedure = normalizeProcedure(getField(ticket, "procedure"));
-
-  return procedure === "rma";
+  return getRmaClassificationValues(ticket).some((value) =>
+    value === "rma"
+  );
 }
 
 function isAllowedRmaProcedure(ticket) {
-  const procedure = normalizeProcedure(getField(ticket, "procedure"));
-
-  return ALLOWED_RMA_TYPES.has(procedure);
+  return getRmaClassificationValues(ticket).some((value) =>
+    ALLOWED_RMA_TYPES.has(value) ||
+    value.includes("rma") ||
+    value.includes("data recovery")
+  );
 }
 
 function getTicketDate(ticket) {
@@ -267,18 +263,17 @@ export function buildTicketAnalytics(tickets = []) {
   const productSummary = productCount(safeTickets);
   const dailySummary = dailyTrend(safeTickets);
 
-  const validRegionTickets = safeTickets.filter(isValidRmaRegion);
-  const uniqueValidRegionTickets = dedupeByTicketNumber(validRegionTickets);
+  const uniqueTickets = dedupeByTicketNumber(safeTickets);
 
-  const dataRecoveryTickets = uniqueValidRegionTickets.filter((ticket) =>
+  const dataRecoveryTickets = uniqueTickets.filter((ticket) =>
     isDataRecoveryProcedure(ticket)
   );
 
-  const rmaTickets = uniqueValidRegionTickets.filter((ticket) =>
+  const rmaTickets = uniqueTickets.filter((ticket) =>
     isAllowedRmaProcedure(ticket)
   );
 
-  const rmaOnlyTickets = uniqueValidRegionTickets.filter((ticket) =>
+  const rmaOnlyTickets = uniqueTickets.filter((ticket) =>
     isRmaOnlyProcedure(ticket)
   );
 

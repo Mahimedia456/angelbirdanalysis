@@ -511,12 +511,6 @@ function exportSatisfactionExcel({
         row.rating ||
         "",
 
-      "Solved Status":
-        row.solvedStatus ||
-        row.solved_status ||
-        row.status ||
-        (row.is_solved ? "Solved" : "Not Solved"),
-
       Comment:
         row.comment ||
         row.comments ||
@@ -528,7 +522,6 @@ function exportSatisfactionExcel({
       15,
       15,
       16,
-      20,
       80,
     ],
   });
@@ -995,7 +988,6 @@ export default function ReportPageSheet() {
     search: "",
     year: "",
     month: "",
-    solvedStatus: "",
     dateFrom: "",
     dateTo: "",
   });
@@ -1083,8 +1075,7 @@ export default function ReportPageSheet() {
       search: "",
       year: "",
       month: "",
-      solvedStatus: "",
-      dateFrom: "",
+        dateFrom: "",
       dateTo: "",
     });
 
@@ -1225,19 +1216,6 @@ export default function ReportPageSheet() {
         satisfactionFilters.month &&
         rowMonth !== satisfactionFilters.month
       ) {
-        return false;
-      }
-
-      const solved =
-        row.is_solved === true ||
-        normalizeKey(row.solvedStatus || row.solved_status || row.status) ===
-          "solved";
-
-      if (satisfactionFilters.solvedStatus === "solved" && !solved) {
-        return false;
-      }
-
-      if (satisfactionFilters.solvedStatus === "not_solved" && solved) {
         return false;
       }
 
@@ -1582,7 +1560,7 @@ export default function ReportPageSheet() {
               </section>
 
               <TicketTabbedTable
-                title="Ticket Report Data"
+                title="Ticket Report Data — Google Sheet"
                 tickets={filteredTickets}
               />
             </>
@@ -1608,7 +1586,7 @@ export default function ReportPageSheet() {
               />
 
               <SatisfactionReportTable
-                title="Customer Satisfaction Report Data"
+                title="Customer Satisfaction Report Data — Google Sheet"
                 rows={filteredSatisfaction}
               />
             </>
@@ -1632,7 +1610,7 @@ export default function ReportPageSheet() {
               />
 
               <RmaReportTable
-                title="RMA Report Data"
+                title="RMA Report Data — Google Sheet"
                 rows={filteredRma}
               />
             </>

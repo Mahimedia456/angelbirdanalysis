@@ -3,7 +3,6 @@ const cards = [
     key: "totalResponses",
     label: "Total Responses",
     valueKey: "totalResponses",
-    suffix: "",
   },
   {
     key: "goodCount",
@@ -17,31 +16,13 @@ const cards = [
     valueKey: "badCount",
     percentKey: "badPercent",
   },
-  {
-    key: "solvedCount",
-    label: "Solved Tickets",
-    valueKey: "solvedCount",
-    percentKey: "solvedPercent",
-  },
-  {
-    key: "notSolvedCount",
-    label: "Not Solved",
-    valueKey: "notSolvedCount",
-    percentKey: "notSolvedPercent",
-  },
-  {
-    key: "commentCount",
-    label: "With Comments",
-    valueKey: "commentCount",
-    percentKey: "commentPercent",
-  },
 ];
 
 export default function SatisfactionKpiCards({ analytics }) {
   const kpis = analytics?.kpis || {};
 
   return (
-    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <section className="grid gap-4 md:grid-cols-3">
       {cards.map((card) => (
         <div key={card.key} className="angel-card p-6">
           <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">

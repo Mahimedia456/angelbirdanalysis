@@ -106,7 +106,6 @@ export default function SatisfactionFilters({
       search: "",
       year: "",
       month: "",
-      solvedStatus: "",
       dateFrom: "",
       dateTo: "",
     });
@@ -134,7 +133,7 @@ export default function SatisfactionFilters({
         </button>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr]">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_1fr_1fr]">
         <input
           value={filters.search || ""}
           onChange={(event) => update("search", event.target.value)}
@@ -172,24 +171,6 @@ export default function SatisfactionFilters({
               {month.label}
             </option>
           ))}
-        </select>
-
-        <select
-          value={filters.solvedStatus || ""}
-          onChange={(event) => update("solvedStatus", event.target.value)}
-          className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none transition focus:border-slate-400"
-        >
-          <option value="">
-            All Solved Status
-          </option>
-
-          <option value="solved">
-            Solved
-          </option>
-
-          <option value="not_solved">
-            Not Solved
-          </option>
         </select>
 
         <input

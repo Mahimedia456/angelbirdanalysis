@@ -349,7 +349,7 @@ function AiAnalysisModal({
         </header>
 
         <div className="space-y-6 p-5 lg:p-7">
-          <section className="grid gap-4 md:grid-cols-3">
+          <section className="grid gap-4 md:grid-cols-2">
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
                 Rating
@@ -357,18 +357,6 @@ function AiAnalysisModal({
 
               <p className="mt-2 font-black text-slate-900">
                 {rating}
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
-                Solved Status
-              </p>
-
-              <p className="mt-2 font-black text-slate-900">
-                {solved
-                  ? "Solved"
-                  : "Not Solved"}
               </p>
             </div>
 

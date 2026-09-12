@@ -13,7 +13,7 @@ export default function SatisfactionAnalyticsPanel({
         <p className="angel-mini-label">Customer Satisfaction Charts</p>
 
         <h2 className="mt-2 angel-page-title">
-          Good / Bad Ratings, Solved Status and Comment Availability
+          Good / Bad Ratings
         </h2>
       </div>
 
@@ -25,35 +25,8 @@ export default function SatisfactionAnalyticsPanel({
           type="pie"
         />
 
-        {/* <ChartPanel
-          chartId={`${prefix}_satisfaction_solved_status`}
-          title="Solved vs Not Solved"
-          data={analytics.solvedSummary}
-          type="pie"
-        /> */}
-
-        <ChartPanel
-          
-          chartId={`${prefix}_satisfaction_comments`}
-          title="Comments Availability"
-          data={analytics.commentSummary}
-          type="pie"
-        />
-
         {showTables ? (
-          <>
-            <SummaryTable title="Rating Summary" data={analytics.ratingSummary} />
-
-            <SummaryTable
-              title="Solved Status Summary"
-              data={analytics.solvedSummary}
-            />
-
-            <SummaryTable
-              title="Comment Availability Summary"
-              data={analytics.commentSummary}
-            />
-          </>
+          <SummaryTable title="Rating Summary" data={analytics.ratingSummary} />
         ) : null}
       </div>
     </section>
