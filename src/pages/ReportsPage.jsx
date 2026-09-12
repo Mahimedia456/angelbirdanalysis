@@ -1582,7 +1582,7 @@ export default function ReportPageSheet() {
               </section>
 
               <TicketTabbedTable
-                title="Ticket Report Data — Google Sheet"
+                title="Ticket Report Data"
                 tickets={filteredTickets}
               />
             </>
@@ -1608,7 +1608,7 @@ export default function ReportPageSheet() {
               />
 
               <SatisfactionReportTable
-                title="Customer Satisfaction Report Data — Google Sheet"
+                title="Customer Satisfaction Report Data"
                 rows={filteredSatisfaction}
               />
             </>
@@ -1632,7 +1632,7 @@ export default function ReportPageSheet() {
               />
 
               <RmaReportTable
-                title="RMA Report Data — Google Sheet"
+                title="RMA Report Data"
                 rows={filteredRma}
               />
             </>
