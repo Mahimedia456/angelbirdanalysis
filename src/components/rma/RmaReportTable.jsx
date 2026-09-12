@@ -48,8 +48,8 @@ function convertToCsv(rows) {
 
   const headers = [
     "Ticket Number",
-    "Region",
     "Date",
+    "Region",
     "Product 1",
     "Ticket Subject",
     "RMA Type",
@@ -58,8 +58,8 @@ function convertToCsv(rows) {
   const body = rows.map((row) =>
     [
       row.ticketNumber,
-      normalizeRegionLabel(row.region),
       row.date,
+      normalizeRegionLabel(row.region),
       row.product1,
       row.ticketSubject,
       row.rmaType,
@@ -255,8 +255,8 @@ export default function RmaReportTable({
           <thead className="bg-slate-50 text-xs uppercase tracking-[0.14em] text-slate-500">
             <tr>
               <th className="w-[12%] px-4 py-4 font-black">Ticket #</th>
-              <th className="w-[10%] px-4 py-4 font-black">Region</th>
               <th className="w-[13%] px-4 py-4 font-black">Date</th>
+              <th className="w-[10%] px-4 py-4 font-black">Region</th>
               <th className="w-[22%] px-4 py-4 font-black">Product 1</th>
               <th className="w-[30%] px-4 py-4 font-black">Subject</th>
               <th className="w-[13%] px-4 py-4 font-black">RMA Type</th>
@@ -275,11 +275,11 @@ export default function RmaReportTable({
                   </td>
 
                   <td className="break-words px-4 py-4 text-slate-600">
-                    {normalizeRegionLabel(row.region) || "-"}
+                    {row.date || "-"}
                   </td>
 
                   <td className="break-words px-4 py-4 text-slate-600">
-                    {row.date || "-"}
+                    {normalizeRegionLabel(row.region) || "-"}
                   </td>
 
                   <td className="break-words px-4 py-4 font-black text-slate-800">

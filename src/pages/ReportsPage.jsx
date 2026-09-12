@@ -422,7 +422,7 @@ function exportTicketExcel({
 }) {
   exportRowsToExcel({
     rows,
-    filename: `angelbird-google-sheet-ticket-${tableMode}-report`,
+    filename: `angelbird-ticket-${tableMode}-report`,
     sheetName: "Ticket Report",
 
     mapRow: (row) => ({
@@ -441,6 +441,12 @@ function exportTicketExcel({
 
       Region:
         normalizeRegionLabel(row.region) ||
+        "",
+
+      Subject:
+        row.ticketSubject ||
+        row.ticket_subject ||
+        row.subject ||
         "",
 
       Product:
@@ -462,22 +468,16 @@ function exportTicketExcel({
         row.productCategory ||
         row.product_category ||
         "",
-
-      Subject:
-        row.ticketSubject ||
-        row.ticket_subject ||
-        row.subject ||
-        "",
     }),
 
     columnWidths: [
       14,
       15,
       12,
+      70,
       34,
       24,
       24,
-      70,
     ],
   });
 }
@@ -487,7 +487,7 @@ function exportSatisfactionExcel({
 }) {
   exportRowsToExcel({
     rows,
-    filename: "angelbird-google-sheet-satisfaction-report",
+    filename: "angelbird-satisfaction-report",
     sheetName: "Satisfaction Report",
 
     mapRow: (row) => ({
@@ -532,13 +532,13 @@ function exportRmaExcel({
 }) {
   exportRowsToExcel({
     rows,
-    filename: "angelbird-google-sheet-rma-report",
+    filename: "angelbird-rma-report",
     sheetName: "RMA Report",
 
     mapRow: (row) => ({
       "Ticket Number": row.ticketNumber || "",
-      Region: normalizeRegionLabel(row.region) || "",
       Date: row.date || "",
+      Region: normalizeRegionLabel(row.region) || "",
       "Product 1": row.product1 || "",
       "Ticket Subject": row.ticketSubject || "",
       "RMA Type": row.rmaType || "",
@@ -629,12 +629,57 @@ function EmptyDataState() {
         </h2>
 
         <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-500">
-          Add ticket, satisfaction, or RMA records in the connected Google Sheet
+          Add ticket, satisfaction, or RMA records to the reporting data source
           and refresh this report.
         </p>
       </div>
     </section>
   );
+}
+
+function normalizeRmaKpiType(value) {
+  return normalizeKey(value).replace(/\s+/g, " ");
+}
+
+function normalizeTicketIdForKpi(value) {
+  return cleanText(value)
+    .replace(/\.0+$/, "")
+    .toLowerCase();
+}
+
+function buildTicketRmaKpiCounts(ticketRows = [], rmaRows = []) {
+  const ticketIds = new Set(
+    ticketRows
+      .map((row) =>
+        normalizeTicketIdForKpi(
+          row.ticketNumber ||
+            row.ticket_number ||
+            row.ticketNo ||
+            row.ticket_id ||
+            row.ticketId
+        )
+      )
+      .filter(Boolean)
+  );
+
+  const matchingRmaRows = rmaRows.filter((row) => {
+    const ticketId = normalizeTicketIdForKpi(row.ticketNumber);
+    return ticketId && ticketIds.has(ticketId);
+  });
+
+  const dataRecoveryCount = matchingRmaRows.filter((row) => {
+    const type = normalizeRmaKpiType(row.rmaType);
+    return type === "data recovery" || type === "data recovery rma";
+  }).length;
+
+  const rmaCount = matchingRmaRows.filter(
+    (row) => normalizeRmaKpiType(row.rmaType) === "rma"
+  ).length;
+
+  return {
+    dataRecoveryCount,
+    rmaCount,
+  };
 }
 
 function TicketTabbedTable({
@@ -848,10 +893,10 @@ function TicketTabbedTable({
               <th className="px-4 py-3">Ticket #</th>
               <th className="px-4 py-3">Date</th>
               <th className="px-4 py-3">Region</th>
+              <th className="px-4 py-3">Subject</th>
               <th className="px-4 py-3">Product</th>
               <th className="px-4 py-3">Support Category</th>
               <th className="px-4 py-3">Product Category</th>
-              <th className="px-4 py-3">Subject</th>
             </tr>
           </thead>
 
@@ -888,6 +933,14 @@ function TicketTabbedTable({
                   {normalizeRegionLabel(ticket.region) || "-"}
                 </td>
 
+                <td className="min-w-[320px] px-4 py-3">
+                  {cleanText(
+                    ticket.ticketSubject ||
+                      ticket.ticket_subject ||
+                      ticket.subject
+                  ) || "-"}
+                </td>
+
                 <td className="min-w-[180px] px-4 py-3">
                   {cleanText(
                     ticket.product ||
@@ -911,14 +964,6 @@ function TicketTabbedTable({
                   {cleanText(
                     ticket.productCategory ||
                       ticket.product_category
-                  ) || "-"}
-                </td>
-
-                <td className="min-w-[320px] px-4 py-3">
-                  {cleanText(
-                    ticket.ticketSubject ||
-                      ticket.ticket_subject ||
-                      ticket.subject
                   ) || "-"}
                 </td>
               </tr>
@@ -979,7 +1024,6 @@ export default function ReportPageSheet() {
     region: "",
     supportCategory: "",
     productCategory: "",
-    procedure: "",
     dateFrom: "",
     dateTo: "",
   });
@@ -1052,7 +1096,7 @@ export default function ReportPageSheet() {
         return;
       }
 
-      setError(loadError.message || "Unable to load Google Sheet report data.");
+      setError(loadError.message || "Unable to load report data.");
     } finally {
       setLoading(false);
     }
@@ -1066,7 +1110,6 @@ export default function ReportPageSheet() {
       region: "",
       supportCategory: "",
       productCategory: "",
-      procedure: "",
       dateFrom: "",
       dateTo: "",
     });
@@ -1106,7 +1149,6 @@ export default function ReportPageSheet() {
         ticket.ticketSubject,
         ticket.ticket_subject,
         ticket.subject,
-        ticket.procedure,
         normalizeRegionLabel(ticket.region),
       ]
         .map(normalizeKey)
@@ -1152,14 +1194,6 @@ export default function ReportPageSheet() {
           ticket.productCategory ||
             ticket.product_category
         ) !== normalizeKey(ticketFilters.productCategory)
-      ) {
-        return false;
-      }
-
-      if (
-        ticketFilters.procedure &&
-        normalizeProcedure(ticket.procedure || ticket.Procedure) !==
-          normalizeProcedure(ticketFilters.procedure)
       ) {
         return false;
       }
@@ -1293,10 +1327,18 @@ export default function ReportPageSheet() {
     rmaFilters,
   ]);
 
-  const ticketAnalytics = useMemo(
-    () => buildTicketAnalytics(filteredTickets),
-    [filteredTickets]
-  );
+  const ticketAnalytics = useMemo(() => {
+    const analytics = buildTicketAnalytics(filteredTickets);
+    const rmaKpis = buildTicketRmaKpiCounts(filteredTickets, rmaRows);
+
+    return {
+      ...analytics,
+      kpis: {
+        ...analytics.kpis,
+        ...rmaKpis,
+      },
+    };
+  }, [filteredTickets, rmaRows]);
 
   const ticketChartData = useMemo(
     () => makeTicketChartData(filteredTickets),
@@ -1320,7 +1362,7 @@ export default function ReportPageSheet() {
       ? "Satisfaction Report"
       : "RMA Report";
 
-  const exportTitle = `Angelbird Google Sheet ${currentModeLabel}`;
+  const exportTitle = `Angelbird ${currentModeLabel}`;
 
   function handleExcelExport() {
     if (mode === "tickets") {
@@ -1560,7 +1602,7 @@ export default function ReportPageSheet() {
               </section>
 
               <TicketTabbedTable
-                title="Ticket Report Data — Google Sheet"
+                title="Ticket Report Data"
                 tickets={filteredTickets}
               />
             </>
@@ -1586,7 +1628,7 @@ export default function ReportPageSheet() {
               />
 
               <SatisfactionReportTable
-                title="Customer Satisfaction Report Data — Google Sheet"
+                title="Customer Satisfaction Report Data"
                 rows={filteredSatisfaction}
               />
             </>
@@ -1610,7 +1652,7 @@ export default function ReportPageSheet() {
               />
 
               <RmaReportTable
-                title="RMA Report Data — Google Sheet"
+                title="RMA Report Data"
                 rows={filteredRma}
               />
             </>

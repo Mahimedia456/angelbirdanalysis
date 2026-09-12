@@ -25,8 +25,18 @@ export default function SatisfactionAnalyticsPanel({
           type="pie"
         />
 
+        <ChartPanel
+          chartId={`${prefix}_satisfaction_comments`}
+          title="With Comments vs Without Comments"
+          data={analytics.commentSummary || []}
+          type="pie"
+        />
+
         {showTables ? (
-          <SummaryTable title="Rating Summary" data={analytics.ratingSummary} />
+          <>
+            <SummaryTable title="Rating Summary" data={analytics.ratingSummary} />
+            <SummaryTable title="Comment Summary" data={analytics.commentSummary || []} />
+          </>
         ) : null}
       </div>
     </section>

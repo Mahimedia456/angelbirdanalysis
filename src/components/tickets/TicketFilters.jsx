@@ -113,17 +113,6 @@ function getYearFromTicket(row) {
   return getTicketDate(row).slice(0, 4);
 }
 
-function normalizeProcedureLabel(value) {
-  const clean = String(value || "")
-    .trim()
-    .replace(/\s+/g, " ");
-
-  if (normalizeOption(clean) === "data recovery") {
-    return "Data Recovery";
-  }
-
-  return clean;
-}
 function normalizeSupportCategoryLabel(value) {
   const clean = String(value || "")
     .trim()
@@ -156,9 +145,6 @@ const supportCategories = uniqueCleanOptions(
     getUniqueValues(tickets, "product_category")
   );
 
-  const procedures = uniqueCleanOptions(
-    getUniqueValues(tickets, "procedure").map(normalizeProcedureLabel)
-  );
 
   const allowedRegionKeys = new Set(
     ALLOWED_REGIONS.map((region) => normalizeOption(region))
@@ -188,7 +174,6 @@ const supportCategories = uniqueCleanOptions(
       region: "",
       supportCategory: "",
       productCategory: "",
-      procedure: "",
       dateFrom: "",
       dateTo: "",
     });
@@ -210,7 +195,7 @@ const supportCategories = uniqueCleanOptions(
 
             <input
               className="angel-input h-12 !pl-12"
-              placeholder="Search ticket number, product, subject, procedure..."
+              placeholder="Search ticket number, product, subject..."
               value={filters.search || ""}
               onChange={(event) =>
                 updateFilter("search", event.target.value)
@@ -294,7 +279,7 @@ const supportCategories = uniqueCleanOptions(
         </div>
       </div>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-[0.9fr_0.9fr_0.6fr_0.6fr_auto] xl:items-end">
+      <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_0.7fr_0.7fr_auto] xl:items-end">
         <div>
           <label className="angel-label">Product Category</label>
 
@@ -315,25 +300,6 @@ const supportCategories = uniqueCleanOptions(
           </select>
         </div>
 
-        <div>
-          <label className="angel-label">Procedure</label>
-
-          <select
-            className="angel-input h-12"
-            value={filters.procedure || ""}
-            onChange={(event) =>
-              updateFilter("procedure", event.target.value)
-            }
-          >
-            <option value="">All Procedures</option>
-
-            {procedures.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </div>
 
         <div>
           <label className="angel-label">Date From</label>
