@@ -1,34 +1,28 @@
-import {
-  Router,
-} from "express";
+import { Router } from "express";
 
 import {
   analyzeSatisfaction,
 } from "../controllers/aiSatisfaction.controller.js";
+import {
+  allowRoles,
+  requireAuth,
+} from "../middleware/auth.middleware.js";
 
-/*
- * Apne project ka existing auth middleware
- * available ho to yahan import karo:
- *
- * import { requireAuth } from "../middleware/auth.middleware.js";
- */
+const router = Router();
+const REPORTING_ROLES = ["owner", "admin", "analyst", "viewer"];
 
-const router =
-  Router();
-
-/*
- * Auth middleware ho to:
- *
- * router.post(
- *   "/analyze",
- *   requireAuth,
- *   analyzeSatisfaction
- * );
- */
+function noStore(_request, response, next) {
+  response.set("Cache-Control", "private, no-store, max-age=0");
+  response.set("Pragma", "no-cache");
+  next();
+}
 
 router.post(
   "/analyze",
-  analyzeSatisfaction
+  requireAuth,
+  allowRoles(...REPORTING_ROLES),
+  noStore,
+  analyzeSatisfaction,
 );
 
 export default router;
