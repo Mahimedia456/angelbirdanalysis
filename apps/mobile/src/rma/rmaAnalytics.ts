@@ -145,7 +145,6 @@ function includesSearch(row: NormalizedRma, search: string) {
     row._product2,
     row._subject,
     row._rmaType,
-    row.source,
   ]
     .join(' ')
     .toLowerCase();
@@ -197,6 +196,19 @@ function makeSummary(rows: NormalizedRma[], getter: (row: NormalizedRma) => stri
   return Array.from(counts.values()).sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
 }
 
+
+function chronologicalSummary(rows: NormalizedRma[], getter: (row: NormalizedRma) => string): RmaMetric[] {
+  const counts = new Map<string, number>();
+  rows.forEach((row) => {
+    const name = cleanText(getter(row));
+    if (!name) return;
+    counts.set(name, (counts.get(name) || 0) + 1);
+  });
+  return [...counts.entries()]
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 function makeProductSummary(rows: NormalizedRma[]) {
   const counts = new Map<string, { name: string; value: number }>();
   rows.forEach((row) => {
@@ -231,6 +243,7 @@ export function buildRmaAnalytics(rows: NormalizedRma[]) {
       brokenPlastic,
       repairReplaced,
     },
+    dailySummary: chronologicalSummary(rows, (row) => row._date),
     regionSummary: makeSummary(rows, (row) => row._region),
     tseSummary: makeSummary(rows, (row) => row._tse),
     typeSummary: makeSummary(rows, (row) => row._rmaType),

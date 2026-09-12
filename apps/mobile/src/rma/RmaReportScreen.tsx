@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 
+import { DonutChart, HorizontalBarChart, LineTrendChart } from '@/components/ReportCharts';
 import { ReportSyncStatus } from '@/components/ReportSyncStatus';
 import { useReportData } from '@/reports/ReportDataProvider';
 import {
@@ -21,7 +22,6 @@ import {
   rmaFilterOptions,
   type NormalizedRma,
   type RmaFiltersState,
-  type RmaMetric,
 } from '@/rma/rmaAnalytics';
 import { colors, effects, radius, spacing, typography } from '@/theme';
 
@@ -41,35 +41,6 @@ function KpiCard({ label, value, accent = false }: { label: string; value: numbe
     <View style={[styles.kpiCard, accent && styles.kpiAccent]}>
       <Text style={[styles.kpiLabel, accent && styles.kpiAccentLabel]}>{label}</Text>
       <Text style={[styles.kpiValue, accent && styles.kpiAccentValue]}>{value.toLocaleString()}</Text>
-    </View>
-  );
-}
-
-function MetricBars({ title, items }: { title: string; items: RmaMetric[] }) {
-  const visible = items.slice(0, 7);
-  const max = Math.max(1, ...visible.map((item) => item.value));
-
-  return (
-    <View style={styles.panel}>
-      <Text style={styles.panelEyebrow}>BREAKDOWN</Text>
-      <Text style={styles.panelTitle}>{title}</Text>
-      {visible.length === 0 ? (
-        <Text style={styles.emptyText}>No values available.</Text>
-      ) : (
-        <View style={styles.barList}>
-          {visible.map((item) => (
-            <View key={`${title}-${item.name}`} style={styles.barItem}>
-              <View style={styles.barLabelRow}>
-                <Text numberOfLines={1} style={styles.barLabel}>{item.name}</Text>
-                <Text style={styles.barValue}>{item.value.toLocaleString()}</Text>
-              </View>
-              <View style={styles.barTrack}>
-                <View style={[styles.barFill, { width: `${Math.max(5, (item.value / max) * 100)}%` }]} />
-              </View>
-            </View>
-          ))}
-        </View>
-      )}
     </View>
   );
 }
@@ -266,11 +237,12 @@ export function RmaReportScreen() {
         <KpiCard label="Repair & replaced" value={analytics.kpis.repairReplaced} />
       </View>
 
-      <MetricBars title="RMA by region" items={analytics.regionSummary} />
-      <MetricBars title="RMA by TSE" items={analytics.tseSummary} />
-      <MetricBars title="RMA types" items={analytics.typeSummary} />
-      <MetricBars title="Products" items={analytics.productSummary} />
-      <MetricBars title="Monthly RMA trend" items={analytics.monthSummary} />
+      <HorizontalBarChart title="RMA by Region" items={analytics.regionSummary} />
+      <HorizontalBarChart title="RMA Type" items={analytics.typeSummary} />
+      <LineTrendChart title="Date-wise RMA" items={analytics.dailySummary} />
+      <DonutChart title="Month-wise RMA" items={analytics.monthSummary} centerLabel="RMA" />
+      <DonutChart title="RMA Team" items={analytics.tseSummary} centerLabel="RMA" />
+      <HorizontalBarChart title="Top Products by RMA" items={analytics.productSummary} maxItems={10} />
 
       <View style={styles.rowsHeading}>
         <Text style={styles.panelEyebrow}>RMA DATA</Text>

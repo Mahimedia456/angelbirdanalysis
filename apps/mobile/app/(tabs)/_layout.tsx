@@ -1,4 +1,5 @@
 import { Redirect, Tabs } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/auth/AuthProvider';
 import { AppHeader } from '@/components/AppHeader';
@@ -9,6 +10,8 @@ import { colors, effects } from '@/theme';
 
 export default function ReportingTabsLayout() {
   const { status, user } = useAuth();
+  const insets = useSafeAreaInsets();
+  const safeBottom = Math.max(insets.bottom, 10);
 
   if (status === 'loading') {
     return <AuthSplash />;
@@ -33,15 +36,20 @@ export default function ReportingTabsLayout() {
           fontSize: 10,
           fontWeight: '900',
           marginTop: 2,
+          marginBottom: 0,
         },
         tabBarStyle: {
-          height: 78,
+          height: 66 + safeBottom,
           paddingTop: 7,
-          paddingBottom: 10,
+          paddingBottom: safeBottom,
           borderTopWidth: 1,
           borderTopColor: colors.border.soft,
           backgroundColor: colors.surface.card,
           ...effects.soft,
+        },
+        tabBarHideOnKeyboard: true,
+        tabBarItemStyle: {
+          paddingTop: 2,
         },
         sceneStyle: {
           backgroundColor: colors.surface.page,

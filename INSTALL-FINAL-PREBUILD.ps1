@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-Write-Host "AngelBird Mobile - Final pre-build corrections" -ForegroundColor Cyan
+Write-Host "AngelBird Mobile - Charts, Android safe-area and APK-ready update" -ForegroundColor Cyan
 
 $nodeRaw = (& node -v).Trim().TrimStart('v')
 $nodeVersion = [version]$nodeRaw
@@ -32,8 +32,8 @@ if ($LASTEXITCODE -ne 0) { throw "npm install failed" }
 # Router peers are direct dependencies in package.json; this command also validates them
 # against the installed Expo SDK and corrects only Expo-managed native package versions.
 Write-Host "Validating Expo package alignment..." -ForegroundColor Cyan
-& npx expo install expo-constants expo-linking
-if ($LASTEXITCODE -ne 0) { throw "Required Expo Router peer dependency install failed" }
+& npx expo install expo-constants expo-linking react-native-svg
+if ($LASTEXITCODE -ne 0) { throw "Required Expo native dependency install failed" }
 
 & npx expo install --check
 if ($LASTEXITCODE -ne 0) { throw "Expo dependency alignment failed" }
@@ -63,7 +63,7 @@ foreach ($route in @(
 
 Write-Host ""
 Write-Host "Final pre-build verification complete." -ForegroundColor Green
-Write-Host "Mobile version: 0.12.1" -ForegroundColor Green
+Write-Host "Mobile version: 0.13.0" -ForegroundColor Green
 Write-Host "API: https://angelbirdanalysis-api.vercel.app" -ForegroundColor Green
 Write-Host "Next: cd apps\mobile ; npx expo start --clear" -ForegroundColor White
-Write-Host "Build/store release work remains stopped until explicitly requested." -ForegroundColor Yellow
+Write-Host "Client APK: run .\BUILD-ANDROID-APK.ps1 from the project root." -ForegroundColor Yellow

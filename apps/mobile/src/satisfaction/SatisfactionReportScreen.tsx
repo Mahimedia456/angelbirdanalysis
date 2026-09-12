@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 
+import { DonutChart, HorizontalBarChart, LineTrendChart } from '@/components/ReportCharts';
 import { ReportSyncStatus } from '@/components/ReportSyncStatus';
 import { SatisfactionAiModal } from '@/satisfaction/SatisfactionAiModal';
 import { useReportData } from '@/reports/ReportDataProvider';
@@ -22,7 +23,6 @@ import {
   satisfactionFilterOptions,
   type NormalizedSatisfaction,
   type SatisfactionFiltersState,
-  type SatisfactionMetric,
 } from '@/satisfaction/satisfactionAnalytics';
 import { colors, effects, radius, spacing, typography } from '@/theme';
 
@@ -59,43 +59,6 @@ function KpiCard({
           </View>
         ) : null}
       </View>
-    </View>
-  );
-}
-
-function MetricBars({
-  title,
-  items,
-  maxItems = 6,
-}: {
-  title: string;
-  items: SatisfactionMetric[];
-  maxItems?: number;
-}) {
-  const visible = items.slice(0, maxItems);
-  const max = Math.max(1, ...visible.map((item) => item.value));
-
-  return (
-    <View style={styles.panel}>
-      <Text style={styles.panelEyebrow}>BREAKDOWN</Text>
-      <Text style={styles.panelTitle}>{title}</Text>
-      {visible.length === 0 ? (
-        <Text style={styles.emptyText}>No values available.</Text>
-      ) : (
-        <View style={styles.barList}>
-          {visible.map((item) => (
-            <View key={`${title}-${item.name}`} style={styles.barItem}>
-              <View style={styles.barLabelRow}>
-                <Text numberOfLines={1} style={styles.barLabel}>{item.name}</Text>
-                <Text style={styles.barValue}>{item.value.toLocaleString()}</Text>
-              </View>
-              <View style={styles.barTrack}>
-                <View style={[styles.barFill, { width: `${Math.max(5, (item.value / max) * 100)}%` }]} />
-              </View>
-            </View>
-          ))}
-        </View>
-      )}
     </View>
   );
 }
@@ -359,11 +322,11 @@ export function SatisfactionReportScreen() {
         <KpiCard label="With comments" value={analytics.kpis.commentCount} percent={analytics.kpis.commentPercent} />
       </View>
 
-      <MetricBars title="Ratings" items={analytics.ratingSummary} />
-      <MetricBars title="Solved status" items={analytics.solvedSummary} />
-      <MetricBars title="Comment coverage" items={analytics.commentSummary} />
-      <MetricBars title="Satisfaction reasons" items={analytics.reasonSummary} maxItems={8} />
-      <MetricBars title="Responses by month" items={analytics.monthlySummary} maxItems={12} />
+      <DonutChart title="Good vs Bad Rating" items={analytics.ratingSummary} centerLabel="Responses" />
+      <DonutChart title="Comments Availability" items={analytics.commentSummary} centerLabel="Responses" />
+      <HorizontalBarChart title="Solved Status" items={analytics.solvedSummary} />
+      <HorizontalBarChart title="Satisfaction Reasons" items={analytics.reasonSummary} maxItems={8} />
+      <LineTrendChart title="Responses by Month" items={analytics.monthlySummary} maxPoints={24} />
 
       <View style={styles.rowsHeading}>
         <Text style={styles.panelEyebrow}>SATISFACTION DATA</Text>

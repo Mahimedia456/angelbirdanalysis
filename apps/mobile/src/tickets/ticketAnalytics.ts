@@ -233,6 +233,19 @@ function productMetric(rows: NormalizedTicket[]) {
   return [...counts.values()].sort((a, b) => b.value - a.value);
 }
 
+
+function chronologicalMetric(rows: NormalizedTicket[], getter: (row: NormalizedTicket) => string): TicketMetric[] {
+  const counts = new Map<string, number>();
+  rows.forEach((row) => {
+    const name = cleanText(getter(row));
+    if (!name) return;
+    counts.set(name, (counts.get(name) || 0) + 1);
+  });
+  return [...counts.entries()]
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 function dedupeTicketNumber(rows: NormalizedTicket[]) {
   const seen = new Set<string>();
   return rows.filter((row) => {
@@ -251,6 +264,7 @@ export function buildTicketAnalytics(rows: NormalizedTicket[]) {
   const regionSummary = metric(rows, (row) => row._region);
   const tseSummary = metric(rows, (row) => row._tse);
   const productSummary = productMetric(rows);
+  const dailySummary = chronologicalMetric(rows, (row) => row._date);
 
   const validRegionRows = dedupeTicketNumber(rows.filter((row) => ALLOWED_REGIONS.has(row._region)));
   const dataRecoveryCount = validRegionRows.filter((row) => normalizeProcedure(row._procedure) === 'data recovery').length;
@@ -272,6 +286,7 @@ export function buildTicketAnalytics(rows: NormalizedTicket[]) {
       hardwareCount: rows.filter((row) => key(row._supportCategory).includes('hardware')).length,
       firmwareCount: rows.filter((row) => contains(row, 'firmware')).length,
     },
+    dailySummary,
     regionSummary,
     tseSummary,
     supportCategorySummary,

@@ -2,7 +2,7 @@
   "expo": {
     "name": "AngelBird Reporting",
     "slug": "angelbird-reporting",
-    "version": "0.12.1",
+    "version": "0.13.1",
     "orientation": "portrait",
     "scheme": "angelbird-reporting",
     "userInterfaceStyle": "light",
@@ -28,7 +28,7 @@
         "backgroundColor": "#FFFFFF",
         "monochromeImage": "./assets/brand/adaptive-icon-monochrome.png"
       },
-      "versionCode": 1,
+      "versionCode": 3,
       "blockedPermissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
@@ -72,7 +72,13 @@
     "extra": {
       "dataMode": "secure-auto-sync-cache",
       "brandSource": "angelbird-favicon",
-      "security": "role-allowlist"
+      "security": "role-allowlist",
+      "charts": "native-mixed-line-donut-horizontal-bar",
+      "androidSafeArea": "system-navigation-aware-tabs",
+      "router": {},
+      "eas": {
+        "projectId": "345fab4c-d159-4ad4-abdd-a2c6b63e0e7c"
+      }
     },
     "description": "Secure AngelBird mobile reporting for Ticket, Satisfaction and RMA analytics.",
     "primaryColor": "#D7FF00"
