@@ -201,43 +201,6 @@ function getSentimentClass(
   return "bg-slate-100 text-slate-600";
 }
 
-function RatingFilterButton({
-  active,
-  label,
-  count,
-  onClick,
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={[
-        "inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-black transition",
-
-        active
-          ? "border-slate-900 bg-slate-900 text-white shadow-sm"
-          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50",
-      ].join(" ")}
-    >
-      <span>
-        {label}
-      </span>
-
-      <span
-        className={[
-          "rounded-full px-2 py-0.5 text-[10px]",
-
-          active
-            ? "bg-white/15 text-white"
-            : "bg-slate-100 text-slate-500",
-        ].join(" ")}
-      >
-        {count}
-      </span>
-    </button>
-  );
-}
-
 function AiAnalysisModal({
   row,
   onClose,
@@ -618,87 +581,20 @@ function AiAnalysisModal({
 }
 
 export default function SatisfactionReportTable({
-  title =
-    "Customer Satisfaction Data",
-
+  title = "Customer Satisfaction Data",
   rows = [],
-
   preview = false,
 }) {
-  const [
-    ratingFilter,
-    setRatingFilter,
-  ] = useState("All");
+  const [selectedRow, setSelectedRow] = useState(null);
 
-  const [
-    selectedRow,
-    setSelectedRow,
-  ] = useState(null);
-
-  const normalizedRows =
-    useMemo(
-      () =>
-        (
-          Array.isArray(rows)
-            ? rows
-            : []
-        ).map((row) => ({
-          ...row,
-
-          normalizedRating:
-            normalizeRating(
-              row.rating
-            ),
-        })),
-      [rows]
-    );
-
-  const counts =
-    useMemo(() => {
-      return normalizedRows.reduce(
-        (
-          result,
-          row
-        ) => {
-          result.All += 1;
-
-          result[
-            row.normalizedRating
-          ] =
-            (result[
-              row.normalizedRating
-            ] || 0) + 1;
-
-          return result;
-        },
-        {
-          All: 0,
-          Good: 0,
-          Bad: 0,
-          Unknown: 0,
-          Offered: 0,
-        }
-      );
-    }, [normalizedRows]);
-
-  const visibleRows =
-    useMemo(() => {
-      if (
-        ratingFilter ===
-        "All"
-      ) {
-        return normalizedRows;
-      }
-
-      return normalizedRows.filter(
-        (row) =>
-          row.normalizedRating ===
-          ratingFilter
-      );
-    }, [
-      normalizedRows,
-      ratingFilter,
-    ]);
+  const normalizedRows = useMemo(
+    () =>
+      (Array.isArray(rows) ? rows : []).map((row) => ({
+        ...row,
+        normalizedRating: normalizeRating(row.rating),
+      })),
+    [rows]
+  );
 
   return (
     <>
@@ -707,9 +603,7 @@ export default function SatisfactionReportTable({
           <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
             <div>
               <p className="angel-mini-label">
-                {preview
-                  ? "Mapped Preview"
-                  : "Satisfaction Data"}
+                {preview ? "Mapped Preview" : "Satisfaction Data"}
               </p>
 
               <h2 className="mt-2 break-words text-2xl font-black tracking-[-0.04em] text-slate-950">
@@ -717,216 +611,81 @@ export default function SatisfactionReportTable({
               </h2>
 
               <p className="mt-2 break-words text-sm leading-6 text-slate-500">
-                Showing{" "}
-                {visibleRows.length} from{" "}
-                {normalizedRows.length}{" "}
-                customer satisfaction records.
+                Showing {normalizedRows.length} customer satisfaction records.
               </p>
             </div>
-
-            {!preview ? (
-              <div className="no-print no-export flex flex-wrap gap-2">
-                <RatingFilterButton
-                  label="All"
-                  count={
-                    counts.All
-                  }
-                  active={
-                    ratingFilter ===
-                    "All"
-                  }
-                  onClick={() =>
-                    setRatingFilter(
-                      "All"
-                    )
-                  }
-                />
-
-                <RatingFilterButton
-                  label="Good"
-                  count={
-                    counts.Good
-                  }
-                  active={
-                    ratingFilter ===
-                    "Good"
-                  }
-                  onClick={() =>
-                    setRatingFilter(
-                      "Good"
-                    )
-                  }
-                />
-
-                <RatingFilterButton
-                  label="Bad"
-                  count={
-                    counts.Bad
-                  }
-                  active={
-                    ratingFilter ===
-                    "Bad"
-                  }
-                  onClick={() =>
-                    setRatingFilter(
-                      "Bad"
-                    )
-                  }
-                />
-
-                {counts.Unknown >
-                0 ? (
-                  <RatingFilterButton
-                    label="Unknown"
-                    count={
-                      counts.Unknown
-                    }
-                    active={
-                      ratingFilter ===
-                      "Unknown"
-                    }
-                    onClick={() =>
-                      setRatingFilter(
-                        "Unknown"
-                      )
-                    }
-                  />
-                ) : null}
-              </div>
-            ) : null}
           </div>
         </div>
 
-        <div className="w-full">
-  <table className="w-full table-fixed border-collapse text-left text-sm">
-    <thead className="bg-slate-50 text-xs uppercase tracking-[0.14em] text-slate-500">
+        <div className="w-full overflow-x-auto">
+          <table className="w-full min-w-[1120px] table-fixed border-collapse text-left text-sm">
+            <thead className="bg-slate-50 text-xs uppercase tracking-[0.14em] text-slate-500">
               <tr>
-                <th className="min-w-[120px] px-4 py-4 font-black">
-                  Ticket ID
-                </th>
-
-                <th className="min-w-[120px] px-4 py-4 font-black">
-                  Rating
-                </th>
-
-                <th className="min-w-[380px] px-4 py-4 font-black">
-                  Comment
-                </th>
-
-                
-
-                <th className="min-w-[160px] px-4 py-4 font-black">
-                  Updated Date
-                </th>
-
-             
-
+                <th className="w-[13%] px-4 py-4 font-black">Ticket ID</th>
+                <th className="w-[15%] px-4 py-4 font-black">Date</th>
+                <th className="w-[40%] px-4 py-4 font-black">Comment</th>
+                <th className="w-[12%] px-4 py-4 font-black">Rating</th>
                 {!preview ? (
-                  <th className="min-w-[190px] px-4 py-4 font-black">
-                    Analysis
-                  </th>
+                  <th className="w-[20%] px-4 py-4 font-black">AI Summary</th>
                 ) : null}
               </tr>
             </thead>
 
             <tbody className="divide-y divide-slate-100">
-              {visibleRows.length ? (
-                visibleRows.map(
-                  (
-                    row,
-                    index
-                  ) => {
-                    const rating =
-                      row.normalizedRating;
+              {normalizedRows.length ? (
+                normalizedRows.map((row, index) => {
+                  const rating = row.normalizedRating;
 
-                   
+                  return (
+                    <tr
+                      key={`${getTicketId(row) || "ticket"}-${row.id || index}`}
+                      className="bg-white align-top transition hover:bg-slate-50/70"
+                    >
+                      <td className="px-4 py-4 font-bold text-slate-900">
+                        {getTicketId(row)}
+                      </td>
 
-                    return (
-                      <tr
-                        key={`${
-                          getTicketId(
-                            row
-                          ) ||
-                          "ticket"
-                        }-${
-                          row.id ||
-                          index
-                        }`}
-                        className="bg-white align-top transition hover:bg-slate-50/70"
-                      >
-                        <td className="px-4 py-4 font-bold text-slate-900">
-                          {getTicketId(
-                            row
-                          )}
-                        </td>
+                      <td className="px-4 py-4 text-slate-600">
+                        {getUpdatedDate(row)}
+                      </td>
 
+                      <td className="px-4 py-4 text-slate-600">
+                        <span className="block whitespace-normal break-words leading-6">
+                          {getComment(row) || "-"}
+                        </span>
+                      </td>
+
+                      <td className="px-4 py-4">
+                        <span
+                          className={[
+                            "inline-flex rounded-full px-3 py-1.5 text-xs font-black",
+                            rating === "Good"
+                              ? "bg-lime-100 text-lime-800"
+                              : rating === "Bad"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-slate-100 text-slate-600",
+                          ].join(" ")}
+                        >
+                          {rating}
+                        </span>
+                      </td>
+
+                      {!preview ? (
                         <td className="px-4 py-4">
-                          <span
-                            className={[
-                              "inline-flex rounded-full px-3 py-1.5 text-xs font-black",
-
-                              rating ===
-                              "Good"
-                                ? "bg-lime-100 text-lime-800"
-                                : rating ===
-                                  "Bad"
-                                ? "bg-red-100 text-red-700"
-                                : "bg-slate-100 text-slate-600",
-                            ].join(" ")}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedRow(row)}
+                            disabled={!getComment(row) && !getReason(row)}
+                            className="no-print no-export inline-flex items-center gap-2 rounded-xl bg-black px-4 py-2.5 text-xs font-black text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
                           >
-                            {rating}
-                          </span>
+                            <BrainCircuit size={16} />
+                            View AI Summary
+                          </button>
                         </td>
-
-                        <td className="px-4 py-4 text-slate-600">
-                          <span className="block whitespace-normal break-words leading-6">
-                            {getComment(
-                              row
-                            ) || "-"}
-                          </span>
-                        </td>
-
-                      
-
-                        <td className="px-4 py-4 text-slate-600">
-                          {getUpdatedDate(
-                            row
-                          )}
-                        </td>
-
-                      
-
-                        {!preview ? (
-                          <td className="px-4 py-4">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setSelectedRow(
-                                  row
-                                )
-                              }
-                              disabled={
-                                !getComment(
-                                  row
-                                ) &&
-                                !getReason(
-                                  row
-                                )
-                              }
-                              className="no-print no-export inline-flex items-center gap-2 rounded-xl bg-black px-4 py-2.5 text-xs font-black text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
-                            >
-                              <BrainCircuit
-                                size={16}
-                              />
-
-                              View Summary
-                            </button>
-                          </td>
-                        ) : null}
-                      </tr>
-                    );
-                  }
-                )
+                      ) : null}
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td
@@ -943,16 +702,7 @@ export default function SatisfactionReportTable({
       </section>
 
       {selectedRow ? (
-        <AiAnalysisModal
-          row={
-            selectedRow
-          }
-          onClose={() =>
-            setSelectedRow(
-              null
-            )
-          }
-        />
+        <AiAnalysisModal row={selectedRow} onClose={() => setSelectedRow(null)} />
       ) : null}
     </>
   );

@@ -1,16 +1,15 @@
 import { ArrowDownToLine } from "lucide-react";
+import { normalizeRegionLabel } from "../../utils/region";
 
 function convertToCsv(rows) {
   if (!rows.length) return "";
 
   const headers = [
-    "TSE",
     "Ticket Number",
     "Region",
     "Submitted",
     "Date",
     "Product 1",
-    "Product 2",
     "Ticket Subject",
     "Support Category",
     "Product Category",
@@ -19,13 +18,11 @@ function convertToCsv(rows) {
 
   const body = rows.map((row) =>
     [
-      row.tse,
       row.ticket_number,
-      row.region,
+      normalizeRegionLabel(row.region),
       row.submitted,
       row.date_display || row.date,
       row.product_1,
-      row.product_2,
       row.ticket_subject,
       row.support_category,
       row.product_category,
@@ -98,39 +95,17 @@ export default function TicketReportTable({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1600px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[1320px] border-collapse text-left text-sm">
           <thead className="bg-slate-50 text-xs uppercase tracking-[0.14em] text-slate-500">
             <tr>
-              <th className="min-w-[160px] px-5 py-4 font-black">
-                Date
-              </th>
-              <th className="min-w-[130px] px-5 py-4 font-black">
-                Ticket #
-              </th>
-              <th className="min-w-[110px] px-5 py-4 font-black">
-                Region
-              </th>
-              <th className="min-w-[170px] px-5 py-4 font-black">
-                TSE
-              </th>
-              <th className="min-w-[240px] px-5 py-4 font-black">
-                Product 1
-              </th>
-              <th className="min-w-[220px] px-5 py-4 font-black">
-                Product 2
-              </th>
-              <th className="min-w-[220px] px-5 py-4 font-black">
-                Support Category
-              </th>
-              <th className="min-w-[210px] px-5 py-4 font-black">
-                Product Category
-              </th>
-              <th className="min-w-[190px] px-5 py-4 font-black">
-                Procedure
-              </th>
-              <th className="min-w-[360px] px-5 py-4 font-black">
-                Subject
-              </th>
+              <th className="min-w-[160px] px-5 py-4 font-black">Date</th>
+              <th className="min-w-[130px] px-5 py-4 font-black">Ticket #</th>
+              <th className="min-w-[110px] px-5 py-4 font-black">Region</th>
+              <th className="min-w-[240px] px-5 py-4 font-black">Product 1</th>
+              <th className="min-w-[220px] px-5 py-4 font-black">Support Category</th>
+              <th className="min-w-[210px] px-5 py-4 font-black">Product Category</th>
+              <th className="min-w-[190px] px-5 py-4 font-black">Procedure</th>
+              <th className="min-w-[360px] px-5 py-4 font-black">Subject</th>
             </tr>
           </thead>
 
@@ -152,24 +127,12 @@ export default function TicketReportTable({
                   </td>
 
                   <td className="px-5 py-4 text-slate-600">
-                    {ticket.region || "-"}
-                  </td>
-
-                  <td className="px-5 py-4 text-slate-600">
-                    <span className="block whitespace-normal break-words">
-                      {ticket.tse || "-"}
-                    </span>
+                    {normalizeRegionLabel(ticket.region) || "-"}
                   </td>
 
                   <td className="px-5 py-4 font-black text-slate-800">
                     <span className="block whitespace-normal break-words">
                       {ticket.product_1 || "-"}
-                    </span>
-                  </td>
-
-                  <td className="px-5 py-4 text-slate-600">
-                    <span className="block whitespace-normal break-words">
-                      {ticket.product_2 || "-"}
                     </span>
                   </td>
 
@@ -204,7 +167,7 @@ export default function TicketReportTable({
             ) : (
               <tr>
                 <td
-                  colSpan={10}
+                  colSpan={8}
                   className="px-5 py-12 text-center text-sm font-bold text-slate-400"
                 >
                   No ticket records found.

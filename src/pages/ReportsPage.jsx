@@ -59,6 +59,11 @@ import {
   buildSatisfactionAnalytics,
 } from "../utils/satisfactionAnalytics";
 
+import {
+  normalizeRegionKey,
+  normalizeRegionLabel,
+} from "../utils/region";
+
 function cleanText(value) {
   return String(value ?? "")
     .trim()
@@ -285,18 +290,23 @@ function makeDateSummary(rows) {
 }
 
 function makeTicketChartData(rows) {
-  return {
-    region: makeSummary(rows, [
-      "region",
-      "Region",
-    ]),
+  const regionMap = new Map();
 
-    tse: makeSummary(rows, [
-      "tse",
-      "TSE",
-      "agent",
-      "engineer",
-    ]),
+  rows.forEach((row) => {
+    const name = normalizeRegionLabel(row.region || row.Region) || "Unknown";
+    const key = normalizeRegionKey(name) || "unknown";
+
+    if (!regionMap.has(key)) {
+      regionMap.set(key, { name, value: 0 });
+    }
+
+    regionMap.get(key).value += 1;
+  });
+
+  return {
+    region: Array.from(regionMap.values()).sort(
+      (a, b) => Number(b.value || 0) - Number(a.value || 0)
+    ),
 
     date: makeDateSummary(rows),
 
@@ -357,9 +367,7 @@ function buildRmaAnalytics(rows = []) {
       rows.map((row) => cleanText(row.ticketNumber)).filter(Boolean)
     ).size,
 
-    byRegion: makeRmaSummary(rows, (row) => row.region),
-
-    byTse: makeRmaSummary(rows, (row) => row.tse),
+    byRegion: makeRmaSummary(rows, (row) => normalizeRegionLabel(row.region)),
 
     byRmaType: makeRmaSummary(rows, (row) => row.rmaType),
 
@@ -371,7 +379,7 @@ function buildRmaAnalytics(rows = []) {
       row.date ? String(row.date).slice(0, 7) : "Unknown"
     ).sort((a, b) => String(a.name).localeCompare(String(b.name))),
 
-    byProduct: makeRmaSummary(rows, (row) => row.product1 || row.product2),
+    byProduct: makeRmaSummary(rows, (row) => row.product1),
   };
 }
 
@@ -437,14 +445,7 @@ function exportTicketExcel({
         "",
 
       Region:
-        row.region ||
-        "",
-
-      TSE:
-        row.tse ||
-        row.TSE ||
-        row.agent ||
-        row.engineer ||
+        normalizeRegionLabel(row.region) ||
         "",
 
       Product:
@@ -483,7 +484,6 @@ function exportTicketExcel({
       15,
       14,
       12,
-      22,
       34,
       24,
       24,
@@ -554,22 +554,18 @@ function exportRmaExcel({
     sheetName: "RMA Report",
 
     mapRow: (row) => ({
-      TSE: row.tse || "",
       "Ticket Number": row.ticketNumber || "",
-      Region: row.region || "",
+      Region: normalizeRegionLabel(row.region) || "",
       Date: row.date || "",
       "Product 1": row.product1 || "",
-      "Product 2": row.product2 || "",
       "Ticket Subject": row.ticketSubject || "",
       "RMA Type": row.rmaType || "",
     }),
 
     columnWidths: [
-      22,
       16,
       12,
       15,
-      34,
       34,
       70,
       24,
@@ -585,10 +581,6 @@ const TICKET_TABLE_TABS = [
   {
     key: "region",
     label: "Region Wise",
-  },
-  {
-    key: "tse",
-    label: "TSE / Agent Wise",
   },
   {
     key: "support",
@@ -688,15 +680,6 @@ function TicketTabbedTable({
       ],
     },
 
-    tse: {
-      label: "TSE / Agent",
-      keys: [
-        "tse",
-        "TSE",
-        "agent",
-        "engineer",
-      ],
-    },
 
     support: {
       label: "Support Category",
@@ -746,10 +729,15 @@ function TicketTabbedTable({
     const map = new Map();
 
     tickets.forEach((ticket) => {
-      const value = getTicketValue(ticket, currentConfig.keys);
+      const rawValue = getTicketValue(ticket, currentConfig.keys);
+      const value = activeTab === "region"
+        ? normalizeRegionLabel(rawValue)
+        : rawValue;
 
       if (value && value !== "Unknown") {
-        const key = normalizeKey(value);
+        const key = activeTab === "region"
+          ? normalizeRegionKey(value)
+          : normalizeKey(value);
 
         if (!map.has(key)) {
           map.set(key, value);
@@ -773,6 +761,10 @@ function TicketTabbedTable({
 
     return tickets.filter((ticket) => {
       const value = getTicketValue(ticket, currentConfig.keys);
+
+      if (activeTab === "region") {
+        return normalizeRegionKey(value) === normalizeRegionKey(selectedValue);
+      }
 
       return normalizeKey(value) === normalizeKey(selectedValue);
     });
@@ -885,7 +877,6 @@ function TicketTabbedTable({
               <th className="px-4 py-3">Date</th>
               <th className="px-4 py-3">Ticket #</th>
               <th className="px-4 py-3">Region</th>
-              <th className="px-4 py-3">TSE</th>
               <th className="px-4 py-3">Product</th>
               <th className="px-4 py-3">Support Category</th>
               <th className="px-4 py-3">Product Category</th>
@@ -898,7 +889,7 @@ function TicketTabbedTable({
             {!visibleTickets.length ? (
               <tr>
                 <td
-                  colSpan={9}
+                  colSpan={8}
                   className="px-4 py-8 text-center text-sm text-slate-500"
                 >
                   No ticket records found.
@@ -924,16 +915,7 @@ function TicketTabbedTable({
                 </td>
 
                 <td className="px-4 py-3">
-                  {cleanText(ticket.region) || "-"}
-                </td>
-
-                <td className="px-4 py-3">
-                  {cleanText(
-                    ticket.tse ||
-                      ticket.TSE ||
-                      ticket.agent ||
-                      ticket.engineer
-                  ) || "-"}
+                  {normalizeRegionLabel(ticket.region) || "-"}
                 </td>
 
                 <td className="min-w-[180px] px-4 py-3">
@@ -1043,7 +1025,7 @@ export default function ReportPageSheet() {
     search: "",
     year: "",
     month: "",
-    rating: "",
+    rating: "Good",
     solvedStatus: "",
     dateFrom: "",
     dateTo: "",
@@ -1132,7 +1114,7 @@ export default function ReportPageSheet() {
       search: "",
       year: "",
       month: "",
-      rating: "",
+      rating: "Good",
       solvedStatus: "",
       dateFrom: "",
       dateTo: "",
@@ -1162,13 +1144,11 @@ export default function ReportPageSheet() {
         ticket.product_name,
         ticket.product1,
         ticket.product_1,
-        ticket.product_2,
         ticket.ticketSubject,
         ticket.ticket_subject,
         ticket.subject,
         ticket.procedure,
-        ticket.tse,
-        ticket.region,
+        normalizeRegionLabel(ticket.region),
       ]
         .map(normalizeKey)
         .join(" ");
@@ -1191,7 +1171,7 @@ export default function ReportPageSheet() {
 
       if (
         ticketFilters.region &&
-        normalizeKey(ticket.region) !== normalizeKey(ticketFilters.region)
+        normalizeRegionKey(ticket.region) !== normalizeRegionKey(ticketFilters.region)
       ) {
         return false;
       }
@@ -1320,11 +1300,9 @@ export default function ReportPageSheet() {
       const search = normalizeKey(rmaFilters.search);
 
       const searchable = [
-        row.tse,
         row.ticketNumber,
-        row.region,
+        normalizeRegionLabel(row.region),
         row.product1,
-        row.product2,
         row.ticketSubject,
         row.rmaType,
       ]
@@ -1349,7 +1327,7 @@ export default function ReportPageSheet() {
 
       if (
         rmaFilters.region &&
-        normalizeKey(row.region) !== normalizeKey(rmaFilters.region)
+        normalizeRegionKey(row.region) !== normalizeRegionKey(rmaFilters.region)
       ) {
         return false;
       }
@@ -1604,17 +1582,11 @@ export default function ReportPageSheet() {
 
               <section className="grid gap-6 xl:grid-cols-2">
                 <ChartPanel
+                  className="xl:col-span-2"
                   chartId="sheet_ticket_by_region"
                   title="Ticket by Region"
                   data={ticketChartData.region}
-                  type="pie"
-                />
-
-                <ChartPanel
-                  chartId="sheet_ticket_by_tse"
-                  title="Ticket by TSE"
-                  data={ticketChartData.tse}
-                  type="pie"
+                  type="horizontalBar"
                 />
 
                 <ChartPanel
@@ -1650,7 +1622,7 @@ export default function ReportPageSheet() {
                 <ChartPanel
                   className="xl:col-span-2"
                   chartId="sheet_top_product_by_ticket_count"
-                  title="Top Product by Ticket Count"
+                  title="Products by Ticket Count"
                   data={ticketChartData.product}
                   type="bar"
                 />

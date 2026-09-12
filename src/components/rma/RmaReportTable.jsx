@@ -8,6 +8,11 @@ import {
   useState,
 } from "react";
 
+import {
+  normalizeRegionKey,
+  normalizeRegionLabel,
+} from "../../utils/region";
+
 function cleanText(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ");
 }
@@ -42,24 +47,20 @@ function convertToCsv(rows) {
   if (!rows.length) return "";
 
   const headers = [
-    "TSE",
     "Ticket Number",
     "Region",
     "Date",
     "Product 1",
-    "Product 2",
     "Ticket Subject",
     "RMA Type",
   ];
 
   const body = rows.map((row) =>
     [
-      row.tse,
       row.ticketNumber,
-      row.region,
+      normalizeRegionLabel(row.region),
       row.date,
       row.product1,
-      row.product2,
       row.ticketSubject,
       row.rmaType,
     ]
@@ -77,12 +78,12 @@ export default function RmaReportTable({
   const [tableFilters, setTableFilters] = useState({
     search: "",
     region: "",
-    tse: "",
     rmaType: "",
   });
 
-  const regions = uniqueOptions(rows.map((row) => row.region));
-  const tseOptions = uniqueOptions(rows.map((row) => row.tse));
+  const regions = uniqueOptions(
+    rows.map((row) => normalizeRegionLabel(row.region)).filter(Boolean)
+  );
   const rmaTypes = uniqueOptions(rows.map((row) => row.rmaType));
 
   const visibleRows = useMemo(() => {
@@ -90,12 +91,10 @@ export default function RmaReportTable({
       const search = normalizeKey(tableFilters.search);
 
       const searchable = [
-        row.tse,
         row.ticketNumber,
-        row.region,
+        normalizeRegionLabel(row.region),
         row.date,
         row.product1,
-        row.product2,
         row.ticketSubject,
         row.rmaType,
       ]
@@ -106,14 +105,7 @@ export default function RmaReportTable({
 
       if (
         tableFilters.region &&
-        normalizeKey(row.region) !== normalizeKey(tableFilters.region)
-      ) {
-        return false;
-      }
-
-      if (
-        tableFilters.tse &&
-        normalizeKey(row.tse) !== normalizeKey(tableFilters.tse)
+        normalizeRegionKey(row.region) !== normalizeRegionKey(tableFilters.region)
       ) {
         return false;
       }
@@ -140,7 +132,6 @@ export default function RmaReportTable({
     setTableFilters({
       search: "",
       region: "",
-      tse: "",
       rmaType: "",
     });
   }
@@ -194,7 +185,7 @@ export default function RmaReportTable({
       </div>
 
       <div className="no-print no-export border-b border-slate-200 bg-slate-50/70 p-5">
-        <div className="grid gap-4 xl:grid-cols-[1.3fr_0.7fr_0.9fr_0.9fr_auto] xl:items-end">
+        <div className="grid gap-4 xl:grid-cols-[1.5fr_0.8fr_0.9fr_auto] xl:items-end">
           <div>
             <label className="angel-label">Search</label>
 
@@ -206,7 +197,7 @@ export default function RmaReportTable({
 
               <input
                 className="angel-input h-12 !pl-12 bg-white"
-                placeholder="Search ticket, product, TSE, subject..."
+                placeholder="Search ticket, product, subject..."
                 value={tableFilters.search}
                 onChange={(event) => updateFilter("search", event.target.value)}
               />
@@ -226,24 +217,6 @@ export default function RmaReportTable({
               {regions.map((region) => (
                 <option key={region} value={region}>
                   {region}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="angel-label">TSE</label>
-
-            <select
-              className="angel-input h-12 bg-white"
-              value={tableFilters.tse}
-              onChange={(event) => updateFilter("tse", event.target.value)}
-            >
-              <option value="">All TSE</option>
-
-              {tseOptions.map((tse) => (
-                <option key={tse} value={tse}>
-                  {tse}
                 </option>
               ))}
             </select>
@@ -277,18 +250,16 @@ export default function RmaReportTable({
         </div>
       </div>
 
-      <div className="w-full">
-        <table className="w-full table-fixed border-collapse text-left text-sm">
+      <div className="w-full overflow-x-auto">
+        <table className="w-full min-w-[1100px] table-fixed border-collapse text-left text-sm">
           <thead className="bg-slate-50 text-xs uppercase tracking-[0.14em] text-slate-500">
             <tr>
-              <th className="w-[12%] px-4 py-4 font-black">TSE</th>
-              <th className="w-[9%] px-4 py-4 font-black">Ticket #</th>
-              <th className="w-[8%] px-4 py-4 font-black">Region</th>
-              <th className="w-[10%] px-4 py-4 font-black">Date</th>
-              <th className="w-[16%] px-4 py-4 font-black">Product 1</th>
-              <th className="w-[13%] px-4 py-4 font-black">Product 2</th>
-              <th className="w-[22%] px-4 py-4 font-black">Subject</th>
-              <th className="w-[10%] px-4 py-4 font-black">RMA Type</th>
+              <th className="w-[12%] px-4 py-4 font-black">Ticket #</th>
+              <th className="w-[10%] px-4 py-4 font-black">Region</th>
+              <th className="w-[13%] px-4 py-4 font-black">Date</th>
+              <th className="w-[22%] px-4 py-4 font-black">Product 1</th>
+              <th className="w-[30%] px-4 py-4 font-black">Subject</th>
+              <th className="w-[13%] px-4 py-4 font-black">RMA Type</th>
             </tr>
           </thead>
 
@@ -299,16 +270,12 @@ export default function RmaReportTable({
                   key={`${row.ticketNumber || row.date}-${index}`}
                   className="border-t border-slate-100 align-top transition hover:bg-slate-50/70"
                 >
-                  <td className="break-words px-4 py-4 text-slate-600">
-                    {row.tse || "-"}
-                  </td>
-
                   <td className="break-words px-4 py-4 font-bold text-slate-800">
                     {row.ticketNumber || "-"}
                   </td>
 
                   <td className="break-words px-4 py-4 text-slate-600">
-                    {row.region || "-"}
+                    {normalizeRegionLabel(row.region) || "-"}
                   </td>
 
                   <td className="break-words px-4 py-4 text-slate-600">
@@ -317,10 +284,6 @@ export default function RmaReportTable({
 
                   <td className="break-words px-4 py-4 font-black text-slate-800">
                     {row.product1 || "-"}
-                  </td>
-
-                  <td className="break-words px-4 py-4 text-slate-600">
-                    {row.product2 || "-"}
                   </td>
 
                   <td className="break-words px-4 py-4 leading-6 text-slate-600">
@@ -340,7 +303,7 @@ export default function RmaReportTable({
             ) : (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={6}
                   className="px-5 py-12 text-center text-sm font-bold text-slate-400"
                 >
                   No RMA records found.

@@ -1,4 +1,4 @@
-export const ALLOWED_REGIONS = ["APAC", "AUS", "EMEA", "NA", "UK", "US"];
+export const ALLOWED_REGIONS = ["APAC", "AUS", "EMEA", "UAE", "UK", "US"];
 
 export const TICKET_FIELDS = [
   {
@@ -172,6 +172,10 @@ export function cleanText(value = "") {
 
 export function normalizeRegion(value = "") {
   const clean = cleanText(value).toUpperCase();
+
+  if (clean === "NA") {
+    return "UAE";
+  }
 
   if (ALLOWED_REGIONS.includes(clean)) {
     return clean;

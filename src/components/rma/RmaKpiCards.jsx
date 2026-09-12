@@ -2,8 +2,6 @@ import {
   Activity,
   DatabaseZap,
   Globe2,
-  RefreshCcw,
-  UserRoundCheck,
 } from "lucide-react";
 
 export default function RmaKpiCards({ analytics }) {
@@ -16,7 +14,6 @@ export default function RmaKpiCards({ analytics }) {
       helper: "Filtered RMA records",
       icon: Activity,
     },
-   
     {
       label: "RMA Types",
       value: safeAnalytics.byRmaType?.length || 0,
@@ -29,16 +26,10 @@ export default function RmaKpiCards({ analytics }) {
       helper: "Active regions",
       icon: Globe2,
     },
-    {
-      label: "TSE",
-      value: safeAnalytics.byTse?.length || 0,
-      helper: "Active TSE members",
-      icon: UserRoundCheck,
-    },
   ];
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {items.map((item) => {
         const Icon = item.icon;
 

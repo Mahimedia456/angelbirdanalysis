@@ -1,4 +1,5 @@
 import { Search } from "lucide-react";
+import { normalizeRegionKey, normalizeRegionLabel } from "../../utils/region";
 
 const MONTHS = [
   { value: "01", label: "January" },
@@ -14,11 +15,11 @@ const MONTHS = [
   { value: "11", label: "November" },
   { value: "12", label: "December" },
 ];
+
 const ALLOWED_REGIONS = [
   "APAC",
   "AUS",
   "EMEA",
-  "NA",
   "UAE",
   "UK",
   "US",
@@ -67,13 +68,19 @@ export default function RmaFilters({
     rows.map((row) => String(row.date || "").slice(0, 4))
   ).sort((a, b) => b.localeCompare(a));
 
-const regions = ALLOWED_REGIONS.filter((region) =>
-  rows.some((row) => normalizeKey(row.region) === normalizeKey(region))
-);
+  const activeRegionKeys = new Set(
+    rows
+      .map((row) => normalizeRegionKey(row.region))
+      .filter(Boolean)
+  );
 
-const rmaTypes = ALLOWED_RMA_TYPES.filter((type) =>
-  rows.some((row) => normalizeKey(row.rmaType) === normalizeKey(type))
-);
+  const regions = ALLOWED_REGIONS.filter((region) =>
+    activeRegionKeys.has(normalizeRegionKey(region))
+  );
+
+  const rmaTypes = ALLOWED_RMA_TYPES.filter((type) =>
+    rows.some((row) => normalizeKey(row.rmaType) === normalizeKey(type))
+  );
 
   function updateFilter(key, value) {
     onChange?.({
@@ -110,7 +117,7 @@ const rmaTypes = ALLOWED_RMA_TYPES.filter((type) =>
 
             <input
               className="angel-input h-12 !pl-12"
-              placeholder="Search ticket number, product, TSE, subject, RMA type..."
+              placeholder="Search ticket number, product, subject, RMA type..."
               value={filters.search || ""}
               onChange={(event) => updateFilter("search", event.target.value)}
             />
@@ -165,7 +172,7 @@ const rmaTypes = ALLOWED_RMA_TYPES.filter((type) =>
 
             {regions.map((region) => (
               <option key={region} value={region}>
-                {region}
+                {normalizeRegionLabel(region)}
               </option>
             ))}
           </select>

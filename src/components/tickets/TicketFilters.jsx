@@ -1,5 +1,7 @@
 import { Search } from "lucide-react";
 
+import { normalizeRegionLabel } from "../../utils/region";
+
 import {
   ALLOWED_REGIONS,
   getUniqueValues,
@@ -158,13 +160,17 @@ const supportCategories = uniqueCleanOptions(
     getUniqueValues(tickets, "procedure").map(normalizeProcedureLabel)
   );
 
+  const allowedRegionKeys = new Set(
+    ALLOWED_REGIONS.map((region) => normalizeOption(region))
+  );
+
   const activeRegions = uniqueCleanOptions(
-    ALLOWED_REGIONS.filter((region) =>
-      tickets.some(
-        (ticket) =>
-          normalizeOption(ticket.region) === normalizeOption(region)
+    tickets
+      .map((ticket) => normalizeRegionLabel(ticket.region))
+      .filter(
+        (region) =>
+          region && allowedRegionKeys.has(normalizeOption(region))
       )
-    )
   );
 
   function updateFilter(key, value) {

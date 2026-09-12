@@ -67,7 +67,7 @@ export default function RmaAnalyticsPanel({
         chartId={`${prefix}_rma_by_region`}
         title="RMA by Region"
         data={safeAnalytics.byRegion || []}
-        type="bar"
+        type="horizontalBar"
       />
 
       <ChartPanel
@@ -93,16 +93,9 @@ export default function RmaAnalyticsPanel({
       />
 
       <ChartPanel
-        chartId={`${prefix}_rma_by_tse`}
-        title="RMA Team"
-        data={safeAnalytics.byTse || []}
-        type="pie"
-      />
-
-      <ChartPanel
         className="xl:col-span-2"
         chartId={`${prefix}_rma_by_product`}
-        title="Top Products by RMA"
+        title="Products by RMA"
         data={safeAnalytics.byProduct || []}
         type="bar"
       />

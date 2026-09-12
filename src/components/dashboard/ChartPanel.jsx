@@ -24,6 +24,10 @@ import {
 
 const ENTRY_LIMITS = [
   {
+    value: "all",
+    label: "ALL",
+  },
+  {
     value: "10",
     label: "TOP 10",
   },
@@ -35,14 +39,10 @@ const ENTRY_LIMITS = [
     value: "50",
     label: "TOP 50",
   },
-  {
-    value: "all",
-    label: "ALL",
-  },
 ];
 
 const ENTRY_LIMITS_STORAGE_KEY =
-  "angelbird_chart_entry_limits";
+  "angelbird_chart_entry_limits_v2";
 
 function makeChartId(title = "") {
   return String(title)
@@ -83,7 +83,7 @@ function getChartEntryLimit(
 
   return (
     limits[chartId] ||
-    "10"
+    "all"
   );
 }
 
@@ -97,7 +97,7 @@ function saveChartEntryLimit(
     );
 
   limits[chartId] =
-    limit || "10";
+    limit || "all";
 
   saveLocalObject(
     ENTRY_LIMITS_STORAGE_KEY,
@@ -213,7 +213,7 @@ function sortDataForChart(
 
 function limitData(
   rows = [],
-  limit = "10"
+  limit = "all"
 ) {
   const list =
     sortDataForChart(rows);
@@ -276,6 +276,10 @@ function getChartHeight({
     return fullWidth
       ? 460
       : 410;
+  }
+
+  if (type === "horizontalBar") {
+    return Math.max(360, Math.min(720, count * 46 + 110));
   }
 
   if (type === "line") {
@@ -431,7 +435,7 @@ export default function ChartPanel({
     entryLimit,
     setEntryLimit,
   ] = useState(
-    savedLimit || "10"
+    savedLimit || "all"
   );
 
   const colors =
@@ -781,6 +785,65 @@ export default function ChartPanel({
                   )}
                 </Pie>
               </PieChart>
+            ) : type === "horizontalBar" ? (
+              <BarChart
+                data={safeData}
+                layout="vertical"
+                margin={{
+                  top: 10,
+                  right: 34,
+                  bottom: 10,
+                  left: 16,
+                }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#e2e8f0"
+                />
+
+                <XAxis
+                  type="number"
+                  tick={{
+                    fontSize: 11,
+                    fill: "#334155",
+                  }}
+                  allowDecimals={false}
+                />
+
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  width={150}
+                  interval={0}
+                  tick={{
+                    fontSize: 11,
+                    fill: "#334155",
+                  }}
+                  tickFormatter={formatAxisLabel}
+                />
+
+                <Tooltip
+                  content={
+                    <CustomTooltip
+                      chartTitle={title}
+                    />
+                  }
+                />
+
+                <Bar
+                  dataKey="value"
+                  radius={[0, 8, 8, 0]}
+                >
+                  {safeData.map((entry, index) => (
+                    <Cell
+                      key={`${entry.name}-${index}`}
+                      fill={
+                        colors[index % colors.length] || primary
+                      }
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
             ) : (
               <BarChart
                 data={safeData}

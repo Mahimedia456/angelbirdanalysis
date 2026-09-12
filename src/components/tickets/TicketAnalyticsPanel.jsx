@@ -35,10 +35,6 @@ export default function TicketAnalyticsPanel({
       .regionSummary ||
     [];
 
-  const tseSummary =
-    safeAnalytics
-      .tseSummary ||
-    [];
 
   const productSummary =
     safeAnalytics
@@ -143,20 +139,13 @@ export default function TicketAnalyticsPanel({
           chartId={`${prefix}_ticket_region`}
           title="Tickets by Region"
           data={regionSummary}
-          type="bar"
-        />
-
-        <ChartPanel
-          chartId={`${prefix}_ticket_tse`}
-          title="Tickets by TSE"
-          data={tseSummary}
-          type="bar"
+          type="horizontalBar"
         />
 
         <ChartPanel
           className="xl:col-span-2"
           chartId={`${prefix}_ticket_product_count`}
-          title="Top Products by Ticket Count"
+          title="Products by Ticket Count"
           data={productSummary}
           type="bar"
         />
@@ -192,12 +181,6 @@ export default function TicketAnalyticsPanel({
             }
           />
 
-          <SummaryTable
-            title="TSE Summary"
-            data={
-              tseSummary
-            }
-          />
 
           <SummaryTable
             title="Product Ticket Count"
