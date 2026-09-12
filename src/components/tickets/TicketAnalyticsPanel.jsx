@@ -25,11 +25,6 @@ export default function TicketAnalyticsPanel({
       .productCategorySummary ||
     [];
 
-  const procedureSummary =
-    safeAnalytics
-      .procedureSummary ||
-    [];
-
   const regionSummary =
     safeAnalytics
       .regionSummary ||
@@ -123,19 +118,6 @@ export default function TicketAnalyticsPanel({
         />
 
         <ChartPanel
-          chartId={`${prefix}_ticket_procedure`}
-          title="Ticket Procedure"
-          data={
-            procedureSummary
-          }
-          type={
-            chartSettings
-              .ticketProcedureChart ||
-            "bar"
-          }
-        />
-
-        <ChartPanel
           chartId={`${prefix}_ticket_region`}
           title="Tickets by Region"
           data={regionSummary}
@@ -164,13 +146,6 @@ export default function TicketAnalyticsPanel({
             title="Product Category Summary"
             data={
               productCategorySummary
-            }
-          />
-
-          <SummaryTable
-            title="Procedure Summary"
-            data={
-              procedureSummary
             }
           />
 

@@ -1,7 +1,3 @@
-import {
-  getSatisfactionUniqueValues,
-} from "../../utils/satisfactionMapper";
-
 const MONTHS = [
   { value: "01", label: "January" },
   { value: "02", label: "February" },
@@ -94,12 +90,6 @@ export default function SatisfactionFilters({
   filters,
   onChange,
 }) {
-  const ratings = getSatisfactionUniqueValues(rows, "rating");
-  const extraRatings = ratings.filter((rating) => {
-    const normalized = String(rating || "").trim().toLowerCase();
-    return normalized !== "good" && normalized !== "bad";
-  });
-
   const years = uniqueCleanOptions(
     rows.map((row) => getSatisfactionDate(row).slice(0, 4))
   );
@@ -116,7 +106,6 @@ export default function SatisfactionFilters({
       search: "",
       year: "",
       month: "",
-      rating: "Good",
       solvedStatus: "",
       dateFrom: "",
       dateTo: "",
@@ -145,7 +134,7 @@ export default function SatisfactionFilters({
         </button>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_1fr]">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr]">
         <input
           value={filters.search || ""}
           onChange={(event) => update("search", event.target.value)}
@@ -181,22 +170,6 @@ export default function SatisfactionFilters({
           {MONTHS.map((month) => (
             <option key={month.value} value={month.value}>
               {month.label}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={filters.rating ?? "Good"}
-          onChange={(event) => update("rating", event.target.value)}
-          className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none transition focus:border-slate-400"
-        >
-          <option value="Good">Good</option>
-          <option value="Bad">Bad</option>
-          <option value="">All Ratings</option>
-
-          {extraRatings.map((rating) => (
-            <option key={rating} value={rating}>
-              {rating}
             </option>
           ))}
         </select>

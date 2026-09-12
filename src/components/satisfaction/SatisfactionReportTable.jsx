@@ -586,6 +586,7 @@ export default function SatisfactionReportTable({
   preview = false,
 }) {
   const [selectedRow, setSelectedRow] = useState(null);
+  const [ratingView, setRatingView] = useState("Good");
 
   const normalizedRows = useMemo(
     () =>
@@ -595,6 +596,16 @@ export default function SatisfactionReportTable({
       })),
     [rows]
   );
+
+  const visibleRows = useMemo(() => {
+    if (ratingView === "All") {
+      return normalizedRows;
+    }
+
+    return normalizedRows.filter(
+      (row) => row.normalizedRating === ratingView
+    );
+  }, [normalizedRows, ratingView]);
 
   return (
     <>
@@ -611,9 +622,34 @@ export default function SatisfactionReportTable({
               </h2>
 
               <p className="mt-2 break-words text-sm leading-6 text-slate-500">
-                Showing {normalizedRows.length} customer satisfaction records.
+                Showing {visibleRows.length} customer satisfaction records.
               </p>
             </div>
+
+            {!preview ? (
+              <div className="no-print no-export flex flex-wrap gap-2">
+                {["Good", "Bad", "All"].map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setRatingView(option)}
+                    className={[
+                      "rounded-full px-4 py-2.5 text-xs font-black transition",
+                      ratingView === option
+                        ? "text-slate-950 shadow-sm"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-950",
+                    ].join(" ")}
+                    style={
+                      ratingView === option
+                        ? { background: "var(--accent-color)" }
+                        : undefined
+                    }
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -632,8 +668,8 @@ export default function SatisfactionReportTable({
             </thead>
 
             <tbody className="divide-y divide-slate-100">
-              {normalizedRows.length ? (
-                normalizedRows.map((row, index) => {
+              {visibleRows.length ? (
+                visibleRows.map((row, index) => {
                   const rating = row.normalizedRating;
 
                   return (

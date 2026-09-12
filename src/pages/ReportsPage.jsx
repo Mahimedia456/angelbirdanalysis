@@ -321,11 +321,6 @@ function makeTicketChartData(rows) {
       "product_category",
     ]),
 
-    procedure: makeSummary(rows, [
-      "procedure",
-      "Procedure",
-    ]),
-
     product: makeSummary(rows, [
       "product",
       "productName",
@@ -431,17 +426,17 @@ function exportTicketExcel({
     sheetName: "Ticket Report",
 
     mapRow: (row) => ({
+      "Ticket #":
+        row.ticketNumber ||
+        row.ticket_number ||
+        row.ticketNo ||
+        "",
+
       Date:
         row.date_display ||
         row.date ||
         row.ticketDate ||
         row.ticket_date ||
-        "",
-
-      "Ticket #":
-        row.ticketNumber ||
-        row.ticket_number ||
-        row.ticketNo ||
         "",
 
       Region:
@@ -468,11 +463,6 @@ function exportTicketExcel({
         row.product_category ||
         "",
 
-      Procedure:
-        row.procedure ||
-        row.Procedure ||
-        "",
-
       Subject:
         row.ticketSubject ||
         row.ticket_subject ||
@@ -481,13 +471,12 @@ function exportTicketExcel({
     }),
 
     columnWidths: [
-      15,
       14,
+      15,
       12,
       34,
       24,
       24,
-      22,
       70,
     ],
   });
@@ -593,10 +582,6 @@ const TICKET_TABLE_TABS = [
   {
     key: "product",
     label: "Product Wise",
-  },
-  {
-    key: "procedure",
-    label: "Procedure Wise",
   },
 ];
 
@@ -710,13 +695,6 @@ function TicketTabbedTable({
       ],
     },
 
-    procedure: {
-      label: "Procedure",
-      keys: [
-        "procedure",
-        "Procedure",
-      ],
-    },
   };
 
   const currentConfig = tabConfig[activeTab] || tabConfig.all;
@@ -874,13 +852,12 @@ function TicketTabbedTable({
         <table className="min-w-full text-left text-sm">
           <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
             <tr>
-              <th className="px-4 py-3">Date</th>
               <th className="px-4 py-3">Ticket #</th>
+              <th className="px-4 py-3">Date</th>
               <th className="px-4 py-3">Region</th>
               <th className="px-4 py-3">Product</th>
               <th className="px-4 py-3">Support Category</th>
               <th className="px-4 py-3">Product Category</th>
-              <th className="px-4 py-3">Procedure</th>
               <th className="px-4 py-3">Subject</th>
             </tr>
           </thead>
@@ -889,7 +866,7 @@ function TicketTabbedTable({
             {!visibleTickets.length ? (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={7}
                   className="px-4 py-8 text-center text-sm text-slate-500"
                 >
                   No ticket records found.
@@ -902,16 +879,16 @@ function TicketTabbedTable({
                 key={getTicketIdentity(ticket) || ticket.id || index}
                 className="text-slate-700 transition hover:bg-slate-50"
               >
-                <td className="whitespace-nowrap px-4 py-3">
-                  {getTicketDate(ticket) || "-"}
-                </td>
-
                 <td className="whitespace-nowrap px-4 py-3 font-bold text-slate-950">
                   {cleanText(
                     ticket.ticketNumber ||
                       ticket.ticket_number ||
                       ticket.ticketNo
                   ) || "-"}
+                </td>
+
+                <td className="whitespace-nowrap px-4 py-3">
+                  {getTicketDate(ticket) || "-"}
                 </td>
 
                 <td className="px-4 py-3">
@@ -941,13 +918,6 @@ function TicketTabbedTable({
                   {cleanText(
                     ticket.productCategory ||
                       ticket.product_category
-                  ) || "-"}
-                </td>
-
-                <td className="min-w-[180px] px-4 py-3">
-                  {cleanText(
-                    ticket.procedure ||
-                      ticket.Procedure
                   ) || "-"}
                 </td>
 
@@ -1025,7 +995,6 @@ export default function ReportPageSheet() {
     search: "",
     year: "",
     month: "",
-    rating: "Good",
     solvedStatus: "",
     dateFrom: "",
     dateTo: "",
@@ -1114,7 +1083,6 @@ export default function ReportPageSheet() {
       search: "",
       year: "",
       month: "",
-      rating: "Good",
       solvedStatus: "",
       dateFrom: "",
       dateTo: "",
@@ -1256,13 +1224,6 @@ export default function ReportPageSheet() {
       if (
         satisfactionFilters.month &&
         rowMonth !== satisfactionFilters.month
-      ) {
-        return false;
-      }
-
-      if (
-        satisfactionFilters.rating &&
-        normalizeKey(row.rating) !== normalizeKey(satisfactionFilters.rating)
       ) {
         return false;
       }
@@ -1609,14 +1570,6 @@ export default function ReportPageSheet() {
                   title="Ticket Product Category"
                   data={ticketChartData.productCategory}
                   type="line"
-                />
-
-                <ChartPanel
-                  className="xl:col-span-2"
-                  chartId="sheet_ticket_procedure"
-                  title="Ticket Procedure"
-                  data={ticketChartData.procedure}
-                  type="bar"
                 />
 
                 <ChartPanel

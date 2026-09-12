@@ -6,27 +6,25 @@ function convertToCsv(rows) {
 
   const headers = [
     "Ticket Number",
+    "Date",
     "Region",
     "Submitted",
-    "Date",
     "Product 1",
     "Ticket Subject",
     "Support Category",
     "Product Category",
-    "Procedure",
   ];
 
   const body = rows.map((row) =>
     [
       row.ticket_number,
+      row.date_display || row.date,
       normalizeRegionLabel(row.region),
       row.submitted,
-      row.date_display || row.date,
       row.product_1,
       row.ticket_subject,
       row.support_category,
       row.product_category,
-      row.procedure,
     ]
       .map(
         (value) =>
@@ -95,16 +93,15 @@ export default function TicketReportTable({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1320px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[1160px] border-collapse text-left text-sm">
           <thead className="bg-slate-50 text-xs uppercase tracking-[0.14em] text-slate-500">
             <tr>
-              <th className="min-w-[160px] px-5 py-4 font-black">Date</th>
               <th className="min-w-[130px] px-5 py-4 font-black">Ticket #</th>
+              <th className="min-w-[160px] px-5 py-4 font-black">Date</th>
               <th className="min-w-[110px] px-5 py-4 font-black">Region</th>
               <th className="min-w-[240px] px-5 py-4 font-black">Product 1</th>
               <th className="min-w-[220px] px-5 py-4 font-black">Support Category</th>
               <th className="min-w-[210px] px-5 py-4 font-black">Product Category</th>
-              <th className="min-w-[190px] px-5 py-4 font-black">Procedure</th>
               <th className="min-w-[360px] px-5 py-4 font-black">Subject</th>
             </tr>
           </thead>
@@ -116,14 +113,14 @@ export default function TicketReportTable({
                   key={`${ticket.ticket_number || ticket.date}-${index}`}
                   className="border-t border-slate-100 align-top transition hover:bg-slate-50/70"
                 >
-                  <td className="px-5 py-4 font-bold text-slate-700">
-                    <span className="block whitespace-normal break-words">
-                      {ticket.date_display || ticket.date || "-"}
-                    </span>
+                  <td className="px-5 py-4 font-bold text-slate-900">
+                    {ticket.ticket_number || "-"}
                   </td>
 
                   <td className="px-5 py-4 text-slate-600">
-                    {ticket.ticket_number || "-"}
+                    <span className="block whitespace-normal break-words">
+                      {ticket.date_display || ticket.date || "-"}
+                    </span>
                   </td>
 
                   <td className="px-5 py-4 text-slate-600">
@@ -152,12 +149,6 @@ export default function TicketReportTable({
                   </td>
 
                   <td className="px-5 py-4 text-slate-600">
-                    <span className="block whitespace-normal break-words">
-                      {ticket.procedure || "-"}
-                    </span>
-                  </td>
-
-                  <td className="px-5 py-4 text-slate-600">
                     <span className="block whitespace-normal break-words leading-6">
                       {ticket.ticket_subject || "-"}
                     </span>
@@ -167,7 +158,7 @@ export default function TicketReportTable({
             ) : (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={7}
                   className="px-5 py-12 text-center text-sm font-bold text-slate-400"
                 >
                   No ticket records found.
