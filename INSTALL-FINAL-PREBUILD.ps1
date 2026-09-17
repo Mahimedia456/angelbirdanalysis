@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-Write-Host "AngelBird Mobile - Charts, Android safe-area and APK-ready update" -ForegroundColor Cyan
+Write-Host "AngelBird Mobile - Final web parity + interactive chart markers" -ForegroundColor Cyan
 
 $nodeRaw = (& node -v).Trim().TrimStart('v')
 $nodeVersion = [version]$nodeRaw
@@ -63,7 +63,7 @@ foreach ($route in @(
 
 Write-Host ""
 Write-Host "Final pre-build verification complete." -ForegroundColor Green
-Write-Host "Mobile version: 0.13.0" -ForegroundColor Green
+Write-Host "Mobile version: 0.14.1" -ForegroundColor Green
 Write-Host "API: https://angelbirdanalysis-api.vercel.app" -ForegroundColor Green
 Write-Host "Next: cd apps\mobile ; npx expo start --clear" -ForegroundColor White
 Write-Host "Client APK: run .\BUILD-ANDROID-APK.ps1 from the project root." -ForegroundColor Yellow

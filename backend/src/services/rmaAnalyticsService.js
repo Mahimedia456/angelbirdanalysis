@@ -8,14 +8,6 @@ const ALLOWED_REGIONS = new Set([
   "US",
 ]);
 
-const ALLOWED_RMA_TYPES = new Set([
-  "Broken Plastic",
-  "Data Recovery",
-  "Data Recovery RMA",
-  "Repair & Replaced",
-  "RMA",
-]);
-
 function cleanText(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ");
 }
@@ -120,17 +112,15 @@ function normalizeRegion(value) {
 
   if (!raw) return "";
 
-  if (raw === "NORTH AMERICA") return "NA";
+  // AngelBird reporting treats legacy NA values as UAE.
+  if (raw === "NA" || raw === "NORTH AMERICA") return "UAE";
   if (raw === "UNITED STATES") return "US";
   if (raw === "USA") return "US";
   if (raw === "U.K.") return "UK";
   if (raw === "UNITED KINGDOM") return "UK";
 
-  if (ALLOWED_REGIONS.has(raw)) {
-    return raw;
-  }
-
-  return "";
+  // Preserve any non-empty sheet region instead of dropping the row.
+  return ALLOWED_REGIONS.has(raw) ? raw : cleanText(value);
 }
 
 function normalizeRmaType(value) {
@@ -139,6 +129,8 @@ function normalizeRmaType(value) {
 
   if (!key) return "";
 
+  // Keep RMA TYPE as the source of truth. Only obvious aliases/typos are
+  // canonicalized; every other non-empty sheet value is preserved.
   if (key === "dr") return "Data Recovery";
   if (key === "data recovery") return "Data Recovery";
 
@@ -146,19 +138,68 @@ function normalizeRmaType(value) {
   if (key === "data recovery rma") return "Data Recovery RMA";
   if (key === "date recovery rma") return "Data Recovery RMA";
 
-  if (key === "date recovery") return "Data Recovery";
+  // "Date Recovery" is intentionally kept as its own sheet category.
+  if (key === "date recovery") return "Date Recovery";
 
   if (key === "rma") return "RMA";
 
-  if (key === "broken plastic") return "Broken Plastic";
-  if (key === "broken plastics") return "Broken Plastic";
+  if ([
+    "faulty",
+    "fault",
+    "defective",
+    "defect",
+    "faulty unit",
+    "faulty product",
+  ].includes(key)) return "Faulty";
 
-  if (key === "repair & replaced") return "Repair & Replaced";
-  if (key === "repair and replaced") return "Repair & Replaced";
-  if (key === "repaired & replaced") return "Repair & Replaced";
-  if (key === "repair replaced") return "Repair & Replaced";
+  if (key === "broken plastic" || key === "broken plastics") {
+    return "Broken Plastic";
+  }
 
-  return "";
+  if ([
+    "repair & replaced",
+    "repair and replaced",
+    "repaired & replaced",
+    "repair replaced",
+  ].includes(key)) {
+    return "Repair & Replaced";
+  }
+
+  return raw;
+}
+
+function normalizeWarrantyStatus(value) {
+  const raw = cleanText(value);
+  const key = normalizeKey(raw)
+    .replace(/[\/_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!key) return "";
+
+  if ([
+    "in warranty",
+    "within warranty",
+    "under warranty",
+    "warranty",
+    "yes",
+  ].includes(key)) {
+    return "In Warranty";
+  }
+
+  if ([
+    "out of warranty",
+    "out warranty",
+    "oow",
+    "expired warranty",
+    "warranty expired",
+    "no warranty",
+    "no",
+  ].includes(key)) {
+    return "Out of Warranty";
+  }
+
+  return raw;
 }
 
 export function normalizeRmaRows(rows = []) {
@@ -190,6 +231,32 @@ export function normalizeRmaRows(rows = []) {
       ]);
 
       const rmaType = normalizeRmaType(rawRmaType);
+
+      const issues = pick(row, [
+        "issues",
+        "issue",
+        "rma_issues",
+        "rma_issue",
+        "RMA Issues",
+        "RMA Issue",
+        "Issues",
+        "Issue",
+        "problem",
+        "problem_type",
+        "issue_type",
+      ]);
+
+      const warrantyStatus = normalizeWarrantyStatus(
+        pick(row, [
+          "warrantyStatus",
+          "warranty_status",
+          "Warranty Status",
+          "warranty status",
+          "WARRANTY STATUS",
+          "warranty",
+          "Warranty",
+        ])
+      );
 
       return {
         id: row.id || row.sheet_row_number || index + 1,
@@ -247,29 +314,100 @@ export function normalizeRmaRows(rows = []) {
 
         ticketSubject,
 
+        issues,
+        issue: issues,
+
         rmaType,
+
+        warrantyStatus,
+        warranty_status: warrantyStatus,
 
         source: row.source || "",
       };
     })
-    .filter((row) => row.ticketNumber)
-    .filter((row) => row.region)
-    .filter((row) => row.rmaType)
-    .filter((row) => ALLOWED_RMA_TYPES.has(row.rmaType));
+    // The RMA tab is row-based history. Do not discard repeated ticket
+    // numbers: the same ticket can legitimately appear on multiple dates
+    // and with different RMA TYPE / Issues values.
+    .filter((row) => row.rmaType);
+}
+
+function isBlankValue(value) {
+  return value === undefined || value === null || cleanText(value) === "";
+}
+
+function mergeDuplicateRmaRows(primary, fallback) {
+  const merged = {
+    ...fallback,
+    ...primary,
+  };
+
+  Object.keys({ ...fallback, ...primary }).forEach((key) => {
+    if (isBlankValue(primary?.[key]) && !isBlankValue(fallback?.[key])) {
+      merged[key] = fallback[key];
+    }
+  });
+
+  return merged;
+}
+
+function compareRmaRowFreshness(a, b) {
+  const aDate = Date.parse(cleanText(a?.date) || "1970-01-01");
+  const bDate = Date.parse(cleanText(b?.date) || "1970-01-01");
+
+  if (aDate !== bDate) {
+    return aDate - bDate;
+  }
+
+  const aId = Number(a?.id || 0);
+  const bId = Number(b?.id || 0);
+
+  if (Number.isFinite(aId) && Number.isFinite(bId) && aId !== bId) {
+    return aId - bId;
+  }
+
+  return 0;
 }
 
 export function deduplicateRmaRows(rows = []) {
-  const seen = new Set();
+  const sourceRows = Array.isArray(rows) ? rows : [];
+  const byTicket = new Map();
+  const rowsWithoutTicket = [];
 
-  return rows.filter((row) => {
-    const identity = cleanText(row.ticketNumber).toLowerCase();
+  sourceRows.forEach((row) => {
+    const ticketNumber = cleanText(row?.ticketNumber);
 
-    if (!identity) return true;
+    // A row without a ticket number cannot be safely merged with another row.
+    if (!ticketNumber) {
+      rowsWithoutTicket.push(row);
+      return;
+    }
 
-    if (seen.has(identity)) return false;
+    const key = normalizeKey(ticketNumber);
+    const existing = byTicket.get(key);
 
-    seen.add(identity);
-    return true;
+    if (!existing) {
+      byTicket.set(key, row);
+      return;
+    }
+
+    // One RMA record per Ticket #. Prefer the latest dated/sheet row as the
+    // current state, but backfill blank fields from the older duplicate.
+    if (compareRmaRowFreshness(row, existing) >= 0) {
+      byTicket.set(key, mergeDuplicateRmaRows(row, existing));
+    } else {
+      byTicket.set(key, mergeDuplicateRmaRows(existing, row));
+    }
+  });
+
+  return [...byTicket.values(), ...rowsWithoutTicket].sort((a, b) => {
+    const aId = Number(a?.id || 0);
+    const bId = Number(b?.id || 0);
+
+    if (Number.isFinite(aId) && Number.isFinite(bId)) {
+      return aId - bId;
+    }
+
+    return String(a?.date || "").localeCompare(String(b?.date || ""));
   });
 }
 
@@ -327,6 +465,10 @@ export function buildRmaAnalytics(rows = []) {
     byTse: makeSummary(rows, (row) => row.tse),
 
     byRmaType: makeSummary(rows, (row) => row.rmaType),
+
+    byIssue: makeSummary(rows, (row) => row.issues || row.issue),
+
+    byWarrantyStatus: makeSummary(rows, (row) => row.warrantyStatus || row.warranty_status),
 
     byDate: makeDateSummary(rows),
 

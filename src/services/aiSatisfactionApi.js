@@ -8,6 +8,8 @@ export async function analyzeSatisfactionResponse({
   comment,
   reason,
   solved,
+  internalNote,
+  externalTeamNote,
 }) {
   const response =
     await apiRequest(
@@ -21,6 +23,8 @@ export async function analyzeSatisfactionResponse({
           comment,
           reason,
           solved,
+          internalNote,
+          externalTeamNote,
         },
       }
     );

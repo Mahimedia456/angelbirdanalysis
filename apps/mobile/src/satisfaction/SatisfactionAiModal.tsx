@@ -109,10 +109,6 @@ export function SatisfactionAiModal({ row, onClose }: Props) {
                   <Text style={styles.factLabel}>RATING</Text>
                   <Text style={styles.factValue}>{row._rating}</Text>
                 </View>
-                <View style={styles.factCard}>
-                  <Text style={styles.factLabel}>STATUS</Text>
-                  <Text style={styles.factValue}>{row._solvedLabel}</Text>
-                </View>
               </View>
 
               <View style={styles.inputCard}>

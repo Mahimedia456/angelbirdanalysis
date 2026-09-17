@@ -10,7 +10,6 @@ const DEFAULT_SHEET_ID = "1LM5A2NrX4O0M8aOwx29tLMXnTiRG5kAAYQiYxwDXIJc";
 
 const SHEET_ID = process.env.GOOGLE_SHEET_ID || DEFAULT_SHEET_ID;
 const RMA_TAB = process.env.GOOGLE_SHEET_RMA_TAB || "RMA";
-const TICKET_TAB = process.env.GOOGLE_SHEET_TICKET_TAB || "Ticket";
 
 function cleanText(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ");
@@ -153,33 +152,50 @@ async function tryReadTab(tabName) {
 }
 
 export async function getSheetRmaReportData() {
-  let tabResult = await tryReadTab(RMA_TAB);
+  // RMA reporting must always come from the dedicated RMA tab.
+  // Never fall back to Ticket because the two tabs have different semantics
+  // and the RMA TYPE history is row-based.
+  const tabResult = await tryReadTab(RMA_TAB);
 
-  if (!tabResult.ok || !tabResult.rows.length) {
-    tabResult = await tryReadTab(TICKET_TAB);
+  if (!tabResult.ok) {
+    const message =
+      tabResult?.error?.message ||
+      `Unable to read Google Sheet tab ${RMA_TAB}.`;
+
+    const error = new Error(
+      `RMA report could not read the dedicated "${RMA_TAB}" Sheet tab. ${message}`
+    );
+
+    error.code = "RMA_SHEET_TAB_READ_FAILED";
+    throw error;
   }
 
   const normalizedRows = normalizeRmaRows(
     tabResult.rows.map((row) => ({
       ...row,
-      source: "google_sheet",
+      source: "google_sheet_rma_tab",
     }))
   );
 
-  const uniqueRows = deduplicateRmaRows(normalizedRows);
+  // Reporting is unique by Ticket Number, matching the Ticket report.
+  // When the RMA Sheet contains multiple history rows for one ticket, the
+  // latest row wins and blank fields are backfilled from the older duplicate.
+  const reportRows = deduplicateRmaRows(normalizedRows);
 
   return {
     ok: true,
-    source: "google_sheet",
+    source: "google_sheet_rma_tab",
     sheetId: SHEET_ID,
-    tab: tabResult.tabName,
-    rows: uniqueRows,
+    tab: RMA_TAB,
+    rows: reportRows,
     summary: {
-      totalRows: uniqueRows.length,
+      totalRows: reportRows.length,
       rawRows: normalizedRows.length,
-      duplicateRows: normalizedRows.length - uniqueRows.length,
+      duplicateRows: Math.max(normalizedRows.length - reportRows.length, 0),
+      sourceRows: tabResult.rows.length,
+      sourceTab: RMA_TAB,
       generatedAt: new Date().toISOString(),
     },
-    analytics: buildRmaAnalytics(uniqueRows),
+    analytics: buildRmaAnalytics(reportRows),
   };
 }

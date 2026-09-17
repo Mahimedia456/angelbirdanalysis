@@ -82,6 +82,8 @@ function validateInput({
   comment,
   reason,
   solved,
+  internalNote,
+  externalTeamNote,
 }) {
   const cleanComment =
     cleanText(comment);
@@ -89,12 +91,20 @@ function validateInput({
   const cleanReason =
     cleanText(reason);
 
+  const cleanInternalNote =
+    cleanText(internalNote);
+
+  const cleanExternalTeamNote =
+    cleanText(externalTeamNote);
+
   if (
     !cleanComment &&
-    !cleanReason
+    !cleanReason &&
+    !cleanInternalNote &&
+    !cleanExternalTeamNote
   ) {
     const error = new Error(
-      "No satisfaction comment or reason is available for AI analysis."
+      "No customer feedback or team-note context is available for AI analysis."
     );
 
     error.statusCode = 400;
@@ -126,6 +136,14 @@ function validateInput({
       normalizeBoolean(
         solved
       ),
+
+    internalNote:
+      cleanInternalNote ||
+      "No internal note provided.",
+
+    externalTeamNote:
+      cleanExternalTeamNote ||
+      "No external team note provided.",
   };
 }
 
@@ -251,9 +269,19 @@ Classification guidance:
 - Customer Feedback: general praise, thanks, broad satisfaction or dissatisfaction without an identifiable operational owner.
 - Unclear: insufficient evidence.
 
-Do not invent facts that are not present in the provided comment, reason, rating or solved status.
+Use every available source of context, while keeping the sources distinct:
+- Customer feedback/comment
+- Customer reason, if present
+- Internal team note
+- External team note
+- Rating and solved status
 
-The summary must be concise and operational.
+If only one source is present, analyze only that source.
+If two or three text sources are present, synthesize them together and note meaningful agreement or conflict.
+Treat customer feedback as the customer's perspective, Internal Note as internal operational context, and External Team Note as third-party/team response context.
+Do not invent facts that are not present in the provided context.
+
+The summary must be concise, operational, and represent the combined available context.
 The explanation must state why the selected team was chosen.
 The evidence array must quote or paraphrase only the most relevant short clues from the provided text.
 Confidence must be a number from 0 to 1.
@@ -269,6 +297,12 @@ ${data.comment}
 
 Customer reason:
 ${data.reason}
+
+Internal team note:
+${data.internalNote}
+
+External team note:
+${data.externalTeamNote}
       `.trim(),
 
       text: {

@@ -1,4 +1,4 @@
-import type { ReportRow } from '@/reports/types';
+import type { ReportRow, RmaReportRow } from '@/reports/types';
 
 export type TicketMetric = { name: string; value: number };
 
@@ -9,7 +9,6 @@ export type TicketFiltersState = {
   region: string;
   supportCategory: string;
   productCategory: string;
-  procedure: string;
   dateFrom: string;
   dateTo: string;
 };
@@ -19,13 +18,10 @@ export type NormalizedTicket = ReportRow & {
   _date: string;
   _dateDisplay: string;
   _region: string;
-  _tse: string;
   _product1: string;
-  _product2: string;
   _subject: string;
   _supportCategory: string;
   _productCategory: string;
-  _procedure: string;
 };
 
 export const EMPTY_TICKET_FILTERS: TicketFiltersState = {
@@ -35,27 +31,17 @@ export const EMPTY_TICKET_FILTERS: TicketFiltersState = {
   region: '',
   supportCategory: '',
   productCategory: '',
-  procedure: '',
   dateFrom: '',
   dateTo: '',
 };
-
-const ALLOWED_REGIONS = new Set(['APAC', 'AUS', 'EMEA', 'NA', 'UAE', 'UK', 'US']);
-const ALLOWED_RMA_TYPES = new Set([
-  'broken plastic',
-  'data recovery',
-  'data recovery rma',
-  'repair & replaced',
-  'rma',
-]);
 
 export function cleanText(value: unknown) {
   return String(value ?? '').trim().replace(/\s+/g, ' ');
 }
 
 function pick(row: ReportRow, keys: string[]) {
-  for (const key of keys) {
-    const value = cleanText(row[key]);
+  for (const field of keys) {
+    const value = cleanText(row[field]);
     if (value) return value;
   }
   return '';
@@ -65,23 +51,12 @@ function key(value: unknown) {
   return cleanText(value).toLowerCase();
 }
 
-function normalizeRegion(value: unknown) {
+export function normalizeRegion(value: unknown) {
   const raw = cleanText(value).toUpperCase();
   if (raw === 'USA' || raw === 'UNITED STATES') return 'US';
-  if (raw === 'NORTH AMERICA') return 'NA';
+  if (raw === 'NA' || raw === 'NORTH AMERICA') return 'UAE';
   if (raw === 'U.K.' || raw === 'UNITED KINGDOM') return 'UK';
-  return ALLOWED_REGIONS.has(raw) ? raw : raw;
-}
-
-function normalizeProcedure(value: unknown) {
-  const text = key(value);
-  if (text === 'dr' || text === 'data recovery') return 'data recovery';
-  if (['dr rma', 'data recovery rma', 'date recovery rma'].includes(text)) return 'data recovery rma';
-  if (['broken plastic', 'broken plastics'].includes(text)) return 'broken plastic';
-  if (['repair & replaced', 'repair and replaced', 'repaired & replaced', 'repair replaced'].includes(text)) {
-    return 'repair & replaced';
-  }
-  return text;
+  return raw;
 }
 
 export function normalizeDate(value: unknown) {
@@ -111,7 +86,7 @@ export function normalizeDate(value: unknown) {
     }
   }
 
-  const slash = raw.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/);
+  const slash = raw.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{2,4})$/);
   if (slash) {
     let first = Number(slash[1]);
     let second = Number(slash[2]);
@@ -140,18 +115,22 @@ export function normalizeTicket(row: ReportRow): NormalizedTicket {
     _date: date,
     _dateDisplay: pick(row, ['date_display', 'date', 'ticket_date', 'ticketDate']) || date,
     _region: normalizeRegion(pick(row, ['region', 'Region'])),
-    _tse: pick(row, ['tse', 'TSE', 'agent', 'engineer']),
-    _product1: pick(row, ['product_1', 'product1', 'product', 'productName', 'product_name']),
-    _product2: pick(row, ['product_2', 'product2']),
+    _product1: pick(row, ['product_1', 'product1', 'product', 'productName', 'product_name', 'products']),
     _subject: pick(row, ['ticket_subject', 'ticketSubject', 'subject']),
     _supportCategory: pick(row, ['support_category', 'supportCategory', 'category']),
     _productCategory: pick(row, ['product_category', 'productCategory']),
-    _procedure: pick(row, ['procedure', 'Procedure']),
   };
 }
 
 export function normalizeTickets(rows: ReportRow[]) {
-  return rows.map(normalizeTicket);
+  const seen = new Set<string>();
+  return rows.map(normalizeTicket).filter((row) => {
+    const id = key(row._ticketNumber);
+    if (!id) return true;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
 }
 
 function unique(values: string[]) {
@@ -170,7 +149,6 @@ export function ticketFilterOptions(rows: NormalizedTicket[]) {
     regions: unique(rows.map((row) => row._region)),
     supportCategories: unique(rows.map((row) => row._supportCategory)),
     productCategories: unique(rows.map((row) => row._productCategory)),
-    procedures: unique(rows.map((row) => row._procedure)),
   };
 }
 
@@ -182,12 +160,9 @@ export function filterTickets(rows: NormalizedTicket[], filters: TicketFiltersSt
       const searchable = [
         ticket._ticketNumber,
         ticket._product1,
-        ticket._product2,
         ticket._subject,
-        ticket._procedure,
         ticket._supportCategory,
         ticket._productCategory,
-        ticket._tse,
         ticket._region,
       ].map(key).join(' ');
       if (!searchable.includes(search)) return false;
@@ -198,10 +173,8 @@ export function filterTickets(rows: NormalizedTicket[], filters: TicketFiltersSt
     if (filters.region && key(ticket._region) !== key(filters.region)) return false;
     if (filters.supportCategory && key(ticket._supportCategory) !== key(filters.supportCategory)) return false;
     if (filters.productCategory && key(ticket._productCategory) !== key(filters.productCategory)) return false;
-    if (filters.procedure && normalizeProcedure(ticket._procedure) !== normalizeProcedure(filters.procedure)) return false;
     if (filters.dateFrom && ticket._date && ticket._date < filters.dateFrom) return false;
     if (filters.dateTo && ticket._date && ticket._date > filters.dateTo) return false;
-
     return true;
   });
 }
@@ -218,22 +191,6 @@ function metric(rows: NormalizedTicket[], getter: (row: NormalizedTicket) => str
   return [...counts.values()].sort((a, b) => b.value - a.value);
 }
 
-function productMetric(rows: NormalizedTicket[]) {
-  const counts = new Map<string, { name: string; value: number }>();
-  rows.forEach((row) => {
-    [row._product1, row._product2].forEach((name) => {
-      const clean = cleanText(name);
-      if (!clean || ['unknown', 'na', '-'].includes(clean.toLowerCase())) return;
-      const normalized = clean.toLowerCase();
-      const current = counts.get(normalized) || { name: clean, value: 0 };
-      current.value += 1;
-      counts.set(normalized, current);
-    });
-  });
-  return [...counts.values()].sort((a, b) => b.value - a.value);
-}
-
-
 function chronologicalMetric(rows: NormalizedTicket[], getter: (row: NormalizedTicket) => string): TicketMetric[] {
   const counts = new Map<string, number>();
   rows.forEach((row) => {
@@ -241,37 +198,39 @@ function chronologicalMetric(rows: NormalizedTicket[], getter: (row: NormalizedT
     if (!name) return;
     counts.set(name, (counts.get(name) || 0) + 1);
   });
-  return [...counts.entries()]
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  return [...counts.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function dedupeTicketNumber(rows: NormalizedTicket[]) {
-  const seen = new Set<string>();
-  return rows.filter((row) => {
-    const ticket = key(row._ticketNumber);
-    if (!ticket) return true;
-    if (seen.has(ticket)) return false;
-    seen.add(ticket);
-    return true;
+function normalizeRmaType(value: unknown) {
+  return key(value).replace(/\s+/g, ' ');
+}
+
+function buildRmaLinkedKpis(ticketRows: NormalizedTicket[], rmaRows: RmaReportRow[]) {
+  const ticketIds = new Set(ticketRows.map((row) => key(row._ticketNumber)).filter(Boolean));
+  const matching = rmaRows.filter((row) => {
+    const id = key(cleanText(row.ticketNumber).replace(/\.0+$/, ''));
+    return Boolean(id && ticketIds.has(id));
   });
+
+  return {
+    dataRecoveryCount: matching.filter((row) => {
+      const type = normalizeRmaType(row.rmaType);
+      return type === 'data recovery' || type === 'data recovery rma';
+    }).length,
+    rmaCount: matching.filter((row) => normalizeRmaType(row.rmaType) === 'rma').length,
+  };
 }
 
-export function buildTicketAnalytics(rows: NormalizedTicket[]) {
+export function buildTicketAnalytics(rows: NormalizedTicket[], rmaRows: RmaReportRow[] = []) {
   const supportCategorySummary = metric(rows, (row) => row._supportCategory);
   const productCategorySummary = metric(rows, (row) => row._productCategory);
-  const procedureSummary = metric(rows, (row) => row._procedure);
   const regionSummary = metric(rows, (row) => row._region);
-  const tseSummary = metric(rows, (row) => row._tse);
-  const productSummary = productMetric(rows);
+  const productSummary = metric(rows, (row) => row._product1).filter((item) => !['unknown', 'na', '-'].includes(key(item.name)));
   const dailySummary = chronologicalMetric(rows, (row) => row._date);
-
-  const validRegionRows = dedupeTicketNumber(rows.filter((row) => ALLOWED_REGIONS.has(row._region)));
-  const dataRecoveryCount = validRegionRows.filter((row) => normalizeProcedure(row._procedure) === 'data recovery').length;
-  const rmaCount = validRegionRows.filter((row) => ALLOWED_RMA_TYPES.has(normalizeProcedure(row._procedure))).length;
+  const { dataRecoveryCount, rmaCount } = buildRmaLinkedKpis(rows, rmaRows);
 
   const contains = (row: NormalizedTicket, search: string) =>
-    [row._supportCategory, row._procedure, row._subject].some((value) => key(value).includes(search));
+    [row._supportCategory, row._subject].some((value) => key(value).includes(search));
 
   return {
     kpis: {
@@ -288,10 +247,8 @@ export function buildTicketAnalytics(rows: NormalizedTicket[]) {
     },
     dailySummary,
     regionSummary,
-    tseSummary,
     supportCategorySummary,
     productCategorySummary,
-    procedureSummary,
     productSummary,
   };
 }

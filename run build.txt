@@ -1,0 +1,16 @@
+cd D:\angelbird-analytics
+.\BUILD-ANDROID-APK.ps1
+
+eas build --platform android --profile client-apk
+
+
+Remove-Item .expo -Recurse -Force -ErrorAction SilentlyContinue
+
+npx expo start --tunnel --clear --port 8081
+
+
+winget install Ngrok.Ngrok
+
+cd D:\angelbird-analytics\apps\mobile
+
+npx expo start --host localhost --port 8081 --clear

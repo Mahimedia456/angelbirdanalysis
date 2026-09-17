@@ -55,12 +55,15 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.flex}
       >
         <ScrollView
-          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
           contentContainerStyle={styles.content}
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.brandBlock}>
             <BrandMark size={82} />

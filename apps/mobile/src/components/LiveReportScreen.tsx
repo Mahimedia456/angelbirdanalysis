@@ -51,7 +51,6 @@ function ticketPreview(rows: ReportRow[]): PreviewRow[] {
   return rows.slice(0, 12).map((row, index) => {
     const ticket = pick(row, ['ticketNumber', 'ticket_number', 'ticket_id', 'ticketId']);
     const subject = pick(row, ['ticketSubject', 'ticket_subject', 'subject']);
-    const tse = pick(row, ['tse', 'agent', 'engineer']);
     const region = pick(row, ['region']);
     const date = pick(row, ['date', 'ticket_date', 'date_display']);
 
@@ -59,7 +58,7 @@ function ticketPreview(rows: ReportRow[]): PreviewRow[] {
       id: `${ticket || 'ticket'}-${clean(row.sheet_row_number) || index}`,
       eyebrow: ticket || `Ticket row ${index + 1}`,
       title: subject || 'No subject',
-      subtitle: [tse, region].filter(Boolean).join(' · ') || 'No TSE / region',
+      subtitle: region || 'No region',
       meta: date || 'No date',
     };
   });
@@ -87,7 +86,7 @@ function rmaPreview(rows: RmaReportRow[]): PreviewRow[] {
     id: `${row.ticketNumber || row.id || index}`,
     eyebrow: row.ticketNumber || `RMA row ${index + 1}`,
     title: row.ticketSubject || row.rmaType || 'RMA',
-    subtitle: [row.tse, row.region, row.rmaType].filter(Boolean).join(' · '),
+    subtitle: [row.region, row.rmaType].filter(Boolean).join(' · '),
     meta: row.date || 'No date',
   }));
 }
@@ -168,7 +167,7 @@ export function LiveReportScreen({ kind, title, description }: Props) {
 
       <View style={styles.sectionHeader}>
         <View style={styles.sectionCopy}>
-          <Text style={styles.sectionTitle}>Latest sheet data</Text>
+          <Text style={styles.sectionTitle}>Latest report data</Text>
           <Text style={styles.sectionCaption}>Previewing up to 12 normalized rows</Text>
         </View>
         <Pressable
@@ -190,7 +189,7 @@ export function LiveReportScreen({ kind, title, description }: Props) {
         <View style={styles.emptyCard}>
           <Text style={styles.emptyTitle}>No rows available</Text>
           <Text style={styles.emptyText}>
-            The connected sheet returned no normalized rows for this report.
+            No normalized rows are available for this report.
           </Text>
         </View>
       ) : (
@@ -208,12 +207,6 @@ export function LiveReportScreen({ kind, title, description }: Props) {
         </View>
       )}
 
-      <View style={styles.phaseNote}>
-        <Text style={styles.phaseNoteTitle}>Reporting foundation</Text>
-        <Text style={styles.phaseNoteText}>
-          Secure reporting, shared state, authentication, auto-refresh and pull-to-refresh are connected.
-        </Text>
-      </View>
     </ScrollView>
   );
 }

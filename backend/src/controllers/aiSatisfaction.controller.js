@@ -14,6 +14,8 @@ export async function analyzeSatisfaction(
       comment,
       reason,
       solved,
+      internalNote,
+      externalTeamNote,
     } = request.body || {};
 
     const analysis =
@@ -23,6 +25,8 @@ export async function analyzeSatisfaction(
         comment,
         reason,
         solved,
+        internalNote,
+        externalTeamNote,
       });
 
     return response.status(200).json({

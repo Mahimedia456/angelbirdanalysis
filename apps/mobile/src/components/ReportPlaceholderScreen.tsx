@@ -7,10 +7,9 @@ type Props = {
   eyebrow: string;
   title: string;
   description: string;
-  nextPhase: string;
 };
 
-export function ReportPlaceholderScreen({ eyebrow, title, description, nextPhase }: Props) {
+export function ReportPlaceholderScreen({ eyebrow, title, description }: Props) {
   return (
     <SafeAreaView edges={['left', 'right']} style={styles.safeArea}>
       <ScrollView
@@ -28,18 +27,13 @@ export function ReportPlaceholderScreen({ eyebrow, title, description, nextPhase
         <View style={styles.card}>
           <View style={styles.statusRow}>
             <View style={styles.statusDot} />
-            <Text style={styles.status}>PHASE 01 FOUNDATION READY</Text>
+            <Text style={styles.status}>REPORTING READY</Text>
           </View>
 
           <Text style={styles.cardTitle}>Native report module reserved</Text>
           <Text style={styles.cardBody}>
-            The screen route, AngelBird visual system, safe-area behavior and three-tab navigation are now in place. Live report data is intentionally not connected in this phase so the existing web and backend remain untouched.
+            AngelBird reporting is available through the secure production reporting service.
           </Text>
-
-          <View style={styles.nextBox}>
-            <Text style={styles.nextLabel}>NEXT WIRING</Text>
-            <Text style={styles.nextValue}>{nextPhase}</Text>
-          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -130,25 +124,5 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     color: colors.text.secondary,
     ...typography.body,
-  },
-  nextBox: {
-    marginTop: spacing.lg,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface.soft,
-    borderWidth: 1,
-    borderColor: colors.border.soft,
-  },
-  nextLabel: {
-    color: colors.text.muted,
-    ...typography.eyebrow,
-    fontSize: 9,
-  },
-  nextValue: {
-    marginTop: spacing.xs,
-    color: colors.text.brand,
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: '800',
   },
 });

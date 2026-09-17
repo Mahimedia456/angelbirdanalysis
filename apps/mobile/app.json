@@ -2,7 +2,7 @@
   "expo": {
     "name": "AngelBird Reporting",
     "slug": "angelbird-reporting",
-    "version": "0.13.1",
+    "version": "0.14.4",
     "orientation": "portrait",
     "scheme": "angelbird-reporting",
     "userInterfaceStyle": "light",
@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.mahimediasolutions.angelbirdreporting",
-      "buildNumber": "1",
+      "buildNumber": "5",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "UIBackgroundModes": [
@@ -28,7 +28,7 @@
         "backgroundColor": "#FFFFFF",
         "monochromeImage": "./assets/brand/adaptive-icon-monochrome.png"
       },
-      "versionCode": 3,
+      "versionCode": 7,
       "blockedPermissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
@@ -75,6 +75,9 @@
       "security": "role-allowlist",
       "charts": "native-mixed-line-donut-horizontal-bar",
       "androidSafeArea": "system-navigation-aware-tabs",
+      "webParity": "final-web-reporting-2026-09-13-v2",
+      "chartInteraction": "tap-hover-tooltip-plus-ticket-pinch-zoom",
+      "reportTables": "dedicated-screen-with-back-header",
       "router": {},
       "eas": {
         "projectId": "345fab4c-d159-4ad4-abdd-a2c6b63e0e7c"

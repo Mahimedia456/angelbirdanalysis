@@ -6,8 +6,6 @@ export type SatisfactionFiltersState = {
   search: string;
   year: string;
   month: string;
-  rating: string;
-  solvedStatus: string;
   reason: string;
   dateFrom: string;
   dateTo: string;
@@ -28,8 +26,6 @@ export const EMPTY_SATISFACTION_FILTERS: SatisfactionFiltersState = {
   search: '',
   year: '',
   month: '',
-  rating: '',
-  solvedStatus: '',
   reason: '',
   dateFrom: '',
   dateTo: '',
@@ -62,22 +58,18 @@ function pickRaw(row: ReportRow, keys: string[]) {
 export function normalizeSatisfactionRating(value: unknown) {
   const raw = cleanText(value);
   const normalized = raw.toLowerCase();
-
   if (!normalized) return 'Unknown';
   if (normalized.includes('unoffered')) return 'Unoffered';
   if (normalized.includes('offered')) return 'Offered';
-  if (normalized.includes('good')) return 'Good';
-  if (normalized.includes('bad')) return 'Bad';
-
+  if (normalized.includes('good') || normalized.includes('positive') || normalized.includes('satisfied') || normalized.includes('excellent')) return 'Good';
+  if (normalized.includes('bad') || normalized.includes('negative') || normalized.includes('dissatisfied') || normalized.includes('unsatisfied') || normalized.includes('poor')) return 'Bad';
   return raw || 'Unknown';
 }
 
 function normalizeSolved(value: unknown) {
   if (typeof value === 'boolean') return value;
   if (typeof value === 'number') return value > 0;
-
-  const normalized = key(value);
-  return ['1', 'true', 'yes', 'y', 'solved', 'closed', 'resolved'].includes(normalized);
+  return ['1', 'true', 'yes', 'y', 'solved', 'closed', 'resolved'].includes(key(value));
 }
 
 export function normalizeSatisfactionDate(value: unknown) {
@@ -87,9 +79,7 @@ export function normalizeSatisfactionDate(value: unknown) {
   const iso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
   if (iso) {
     const [, yearPart, monthPart, dayPart] = iso;
-    if (yearPart && monthPart && dayPart) {
-      return `${yearPart}-${monthPart.padStart(2, '0')}-${dayPart.padStart(2, '0')}`;
-    }
+    if (yearPart && monthPart && dayPart) return `${yearPart}-${monthPart.padStart(2, '0')}-${dayPart.padStart(2, '0')}`;
   }
 
   const named = raw.match(/^(\d{1,2})[-./\s]([A-Za-z]{3,9})[-./\s](\d{2}|\d{4})$/);
@@ -107,20 +97,18 @@ export function normalizeSatisfactionDate(value: unknown) {
     }
   }
 
-  const slash = raw.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/);
+  const slash = raw.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{2,4})$/);
   if (slash) {
     let first = Number(slash[1]);
     let second = Number(slash[2]);
     let year = Number(slash[3]);
     if (year < 100) year += 2000;
-
     let month = first;
     let day = second;
     if (first > 12) {
       day = first;
       month = second;
     }
-
     return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   }
 
@@ -129,83 +117,26 @@ export function normalizeSatisfactionDate(value: unknown) {
 }
 
 export function normalizeSatisfaction(row: ReportRow): NormalizedSatisfaction {
-  const rawDate = pick(row, [
-    'updated_date',
-    'updatedDate',
-    'ticket_updated_date',
-    'date',
-    'date_display',
-    'responseDate',
-    'response_date',
-  ]);
+  const rawDate = pick(row, ['updated_date', 'updatedDate', 'ticket_updated_date', 'date', 'date_display', 'responseDate', 'response_date']);
   const date = normalizeSatisfactionDate(rawDate);
-
-  const solvedValue = pickRaw(row, [
-    'is_solved',
-    'isSolved',
-    'solved_tickets',
-    'solvedTickets',
-    'solved',
-    'solvedStatus',
-    'solved_status',
-    'status',
-  ]);
+  const solvedValue = pickRaw(row, ['is_solved', 'isSolved', 'solved_tickets', 'solvedTickets', 'solved', 'solvedStatus', 'solved_status', 'status']);
   const isSolved = normalizeSolved(solvedValue);
 
   return {
     ...row,
-    _ticketNumber: pick(row, [
-      'ticketNumber',
-      'ticket_number',
-      'ticketId',
-      'ticket_id',
-      'ticket',
-      'id',
-    ]).replace(/\.0+$/, ''),
-    _rating: normalizeSatisfactionRating(pick(row, [
-      'rating',
-      'satisfactionRating',
-      'satisfaction_rating',
-      'ticket_satisfaction_rating',
-    ])),
-    _comment: pick(row, [
-      'comment',
-      'comments',
-      'feedback',
-      'satisfactionComment',
-      'satisfaction_comment',
-      'ticket_satisfaction_comment',
-    ]),
-    _reason: pick(row, [
-      'reason',
-      'satisfactionReason',
-      'satisfaction_reason',
-      'ticket_satisfaction_reason',
-      'rating_reason',
-    ]) || 'No reason given',
+    _ticketNumber: pick(row, ['ticketNumber', 'ticket_number', 'ticketId', 'ticket_id', 'ticket', 'id']).replace(/\.0+$/, ''),
+    _rating: normalizeSatisfactionRating(pick(row, ['rating', 'satisfactionRating', 'satisfaction_rating', 'ticket_satisfaction_rating'])),
+    _comment: pick(row, ['comment', 'comments', 'feedback', 'satisfactionComment', 'satisfaction_comment', 'ticket_satisfaction_comment']),
+    _reason: pick(row, ['reason', 'satisfactionReason', 'satisfaction_reason', 'ticket_satisfaction_reason', 'rating_reason']) || 'No reason given',
     _date: date,
-    _dateDisplay: pick(row, [
-      'date_display',
-      'updatedDate',
-      'updated_date',
-      'ticket_updated_date',
-      'date',
-      'responseDate',
-      'response_date',
-    ]) || date,
+    _dateDisplay: pick(row, ['date_display', 'updatedDate', 'updated_date', 'ticket_updated_date', 'date', 'responseDate', 'response_date']) || date,
     _isSolved: isSolved,
     _solvedLabel: isSolved ? 'Solved' : 'Not Solved',
   };
 }
 
 export function normalizeSatisfactionRows(rows: ReportRow[]) {
-  return rows.map(normalizeSatisfaction).filter((row) => (
-    row._ticketNumber ||
-    row._rating !== 'Unknown' ||
-    row._comment ||
-    row._reason !== 'No reason given' ||
-    row._date
-  ));
+  return rows.map(normalizeSatisfaction).filter((row) => row._ticketNumber || row._rating !== 'Unknown' || row._comment || row._date);
 }
 
 function unique(values: string[]) {
@@ -221,86 +152,34 @@ export function satisfactionFilterOptions(rows: NormalizedSatisfaction[]) {
   return {
     years: unique(rows.map((row) => row._date.slice(0, 4)).filter(Boolean)).sort((a, b) => b.localeCompare(a)),
     months: unique(rows.map((row) => row._date.slice(5, 7)).filter(Boolean)),
-    ratings: unique(rows.map((row) => row._rating)),
     reasons: unique(rows.map((row) => row._reason).filter((value) => value !== 'No reason given')),
   };
 }
 
-export function filterSatisfactionRows(
-  rows: NormalizedSatisfaction[],
-  filters: SatisfactionFiltersState,
-) {
+export function filterSatisfactionRows(rows: NormalizedSatisfaction[], filters: SatisfactionFiltersState) {
   const search = key(filters.search);
-
   return rows.filter((row) => {
     if (search) {
-      const searchable = [
-        row._ticketNumber,
-        row._rating,
-        row._comment,
-        row._reason,
-        row._solvedLabel,
-      ].map(key).join(' ');
+      const searchable = [row._ticketNumber, row._rating, row._comment, row._reason].map(key).join(' ');
       if (!searchable.includes(search)) return false;
     }
-
     if (filters.year && row._date.slice(0, 4) !== filters.year) return false;
     if (filters.month && row._date.slice(5, 7) !== filters.month) return false;
-    if (filters.rating && key(row._rating) !== key(filters.rating)) return false;
     if (filters.reason && key(row._reason) !== key(filters.reason)) return false;
-    if (filters.solvedStatus === 'solved' && !row._isSolved) return false;
-    if (filters.solvedStatus === 'not_solved' && row._isSolved) return false;
     if (filters.dateFrom && row._date && row._date < filters.dateFrom) return false;
     if (filters.dateTo && row._date && row._date > filters.dateTo) return false;
-
     return true;
   });
 }
 
-function groupCount(
-  rows: NormalizedSatisfaction[],
-  getter: (row: NormalizedSatisfaction) => string,
-): SatisfactionMetric[] {
-  const counts = new Map<string, { name: string; value: number }>();
-
-  rows.forEach((row) => {
-    const name = cleanText(getter(row)) || 'Unknown';
-    const normalized = name.toLowerCase();
-    const current = counts.get(normalized) || { name, value: 0 };
-    current.value += 1;
-    counts.set(normalized, current);
-  });
-
-  return [...counts.values()].sort((a, b) => b.value - a.value);
-}
-
-function chronologicalCount(
-  rows: NormalizedSatisfaction[],
-  getter: (row: NormalizedSatisfaction) => string,
-): SatisfactionMetric[] {
-  const counts = new Map<string, number>();
-  rows.forEach((row) => {
-    const name = getter(row) || 'Unknown';
-    counts.set(name, (counts.get(name) || 0) + 1);
-  });
-  return [...counts.entries()]
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => a.name.localeCompare(b.name));
-}
-
 function percent(value: number, total: number) {
-  if (!total) return 0;
-  return Number(((value / total) * 100).toFixed(1));
+  return total ? Number(((value / total) * 100).toFixed(1)) : 0;
 }
 
 export function buildSatisfactionAnalytics(rows: NormalizedSatisfaction[]) {
   const totalResponses = rows.length;
   const goodCount = rows.filter((row) => row._rating === 'Good').length;
   const badCount = rows.filter((row) => row._rating === 'Bad').length;
-  const offeredCount = rows.filter((row) => row._rating === 'Offered').length;
-  const unknownCount = rows.filter((row) => row._rating === 'Unknown').length;
-  const solvedCount = rows.filter((row) => row._isSolved).length;
-  const notSolvedCount = totalResponses - solvedCount;
   const commentCount = rows.filter((row) => Boolean(row._comment)).length;
   const noCommentCount = totalResponses - commentCount;
 
@@ -309,29 +188,16 @@ export function buildSatisfactionAnalytics(rows: NormalizedSatisfaction[]) {
       totalResponses,
       goodCount,
       badCount,
-      offeredCount,
-      unknownCount,
-      solvedCount,
-      notSolvedCount,
-      commentCount,
-      noCommentCount,
       goodPercent: percent(goodCount, totalResponses),
       badPercent: percent(badCount, totalResponses),
-      solvedPercent: percent(solvedCount, totalResponses),
-      notSolvedPercent: percent(notSolvedCount, totalResponses),
-      commentPercent: percent(commentCount, totalResponses),
     },
-    ratingSummary: groupCount(rows, (row) => row._rating),
-    reasonSummary: groupCount(rows, (row) => row._reason),
-    solvedSummary: [
-      { name: 'Solved', value: solvedCount },
-      { name: 'Not Solved', value: notSolvedCount },
+    ratingSummary: [
+      { name: 'Good', value: goodCount },
+      { name: 'Bad', value: badCount },
     ],
     commentSummary: [
-      { name: 'With Comment', value: commentCount },
-      { name: 'Without Comment', value: noCommentCount },
+      { name: 'With Comments', value: commentCount },
+      { name: 'Without Comments', value: noCommentCount },
     ],
-    dailySummary: chronologicalCount(rows, (row) => row._date),
-    monthlySummary: chronologicalCount(rows, (row) => row._date ? row._date.slice(0, 7) : 'Unknown'),
   };
 }

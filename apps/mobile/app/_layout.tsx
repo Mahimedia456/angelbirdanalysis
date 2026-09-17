@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider } from '@/auth/AuthProvider';
@@ -8,8 +9,9 @@ import { colors } from '@/theme';
 
 export default function RootLayout() {
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AuthProvider>
         <ReportDataProvider>
           <StatusBar style="dark" />
           <Stack
@@ -24,6 +26,12 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="restricted" />
             <Stack.Screen
+              name="report-table"
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
               name="profile"
               options={{
                 presentation: 'modal',
@@ -31,8 +39,9 @@ export default function RootLayout() {
               }}
             />
           </Stack>
-        </ReportDataProvider>
-      </AuthProvider>
-    </SafeAreaProvider>
+          </ReportDataProvider>
+        </AuthProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

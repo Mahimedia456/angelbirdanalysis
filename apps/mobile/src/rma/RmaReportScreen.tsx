@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
+import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
-  FlatList,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -11,7 +11,8 @@ import {
   View,
 } from 'react-native';
 
-import { DonutChart, HorizontalBarChart, LineTrendChart } from '@/components/ReportCharts';
+import { HorizontalBarChart, LineTrendChart, VerticalBarChart } from '@/components/ReportCharts';
+import { DateFilterField } from '@/components/DateFilterField';
 import { ReportSyncStatus } from '@/components/ReportSyncStatus';
 import { useReportData } from '@/reports/ReportDataProvider';
 import {
@@ -59,27 +60,14 @@ function ChipGroup({
   renderLabel?: (value: string) => string;
 }) {
   if (values.length === 0) return null;
-
   return (
     <View style={styles.filterGroup}>
       <Text style={styles.filterLabel}>{label}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-        <Pressable onPress={() => onSelect('')} style={[styles.chip, !selected && styles.chipActive]}>
-          <Text style={[styles.chipText, !selected && styles.chipTextActive]}>All</Text>
-        </Pressable>
+        <Pressable onPress={() => onSelect('')} style={[styles.chip, !selected && styles.chipActive]}><Text style={[styles.chipText, !selected && styles.chipTextActive]}>All</Text></Pressable>
         {values.map((value) => {
           const active = selected === value;
-          return (
-            <Pressable
-              key={`${label}-${value}`}
-              onPress={() => onSelect(active ? '' : value)}
-              style={[styles.chip, active && styles.chipActive]}
-            >
-              <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                {renderLabel ? renderLabel(value) : value}
-              </Text>
-            </Pressable>
-          );
+          return <Pressable key={`${label}-${value}`} onPress={() => onSelect(active ? '' : value)} style={[styles.chip, active && styles.chipActive]}><Text style={[styles.chipText, active && styles.chipTextActive]}>{renderLabel ? renderLabel(value) : value}</Text></Pressable>;
         })}
       </ScrollView>
     </View>
@@ -90,47 +78,32 @@ function RmaCard({ row }: { row: NormalizedRma }) {
   return (
     <View style={styles.recordCard}>
       <View style={styles.recordTop}>
-        <View style={styles.ticketNumberPill}>
-          <Text style={styles.ticketNumber}>{row._ticketNumber || 'No ticket #'}</Text>
-        </View>
+        <View style={styles.ticketNumberPill}><Text style={styles.ticketNumber}>{row._ticketNumber || 'No ticket #'}</Text></View>
         <Text style={styles.recordDate}>{row._dateDisplay || row._date || '-'}</Text>
       </View>
 
-      <View style={styles.typeRow}>
-        <View style={styles.typePill}>
-          <Text style={styles.typeText}>{row._rmaType || 'RMA'}</Text>
-        </View>
+      <View style={styles.regionRow}>
+        <Text style={styles.detailLabel}>REGION</Text>
+        <Text style={styles.regionValue}>{row._region || '-'}</Text>
+      </View>
+
+      <View style={styles.detailBlock}>
+        <Text style={styles.detailLabel}>PRODUCT 1</Text>
+        <Text style={styles.detailValue}>{row._product1 || '-'}</Text>
       </View>
 
       <Text style={styles.recordSubject}>{row._subject || 'No ticket subject'}</Text>
 
-      <View style={styles.recordMetaRow}>
-        <Text style={styles.recordMetaStrong}>{row._tse || 'Unknown TSE'}</Text>
-        <Text style={styles.recordMetaDot}>•</Text>
-        <Text style={styles.recordMeta}>{row._region || 'Unknown region'}</Text>
-      </View>
-
-      <View style={styles.detailGrid}>
-        <View style={styles.detailCell}>
-          <Text style={styles.detailLabel}>PRODUCT 1</Text>
-          <Text numberOfLines={2} style={styles.detailValue}>{row._product1 || '-'}</Text>
-        </View>
-        <View style={styles.detailCell}>
-          <Text style={styles.detailLabel}>REGION</Text>
-          <Text style={styles.detailValue}>{row._region || '-'}</Text>
-        </View>
-        {row._product2 ? (
-          <View style={styles.detailCell}>
-            <Text style={styles.detailLabel}>PRODUCT 2</Text>
-            <Text numberOfLines={2} style={styles.detailValue}>{row._product2}</Text>
-          </View>
-        ) : null}
+      <View style={styles.typeRow}>
+        <Text style={styles.detailLabel}>RMA TYPE</Text>
+        <View style={styles.typePill}><Text style={styles.typeText}>{row._rmaType || 'RMA'}</Text></View>
       </View>
     </View>
   );
 }
 
 export function RmaReportScreen() {
+  const router = useRouter();
   const { status, rma, error, lastSyncedAt, refresh } = useReportData();
   const [filters, setFilters] = useState<RmaFiltersState>(EMPTY_RMA_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -141,7 +114,6 @@ export function RmaReportScreen() {
   const analytics = useMemo(() => buildRmaAnalytics(filtered), [filtered]);
   const isBusy = status === 'loading' || status === 'refreshing';
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
-  const duplicatesRemoved = rma?.summary?.duplicateRows || 0;
 
   function patch<K extends keyof RmaFiltersState>(field: K, value: RmaFiltersState[K]) {
     setFilters((current) => ({ ...current, [field]: value }));
@@ -151,50 +123,25 @@ export function RmaReportScreen() {
     <View style={styles.headerContent}>
       <View style={styles.hero}>
         <View style={styles.heroTopRow}>
-          <View style={styles.livePill}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveText}>LIVE REPORTING</Text>
-          </View>
+          <View style={styles.livePill}><View style={styles.liveDot} /><Text style={styles.liveText}>LIVE REPORTING</Text></View>
           {isBusy ? <ActivityIndicator size="small" color={colors.brand.ink} /> : null}
         </View>
         <Text style={styles.title}>RMA Report</Text>
-        <Text style={styles.description}>Deduplicated native RMA analytics with synchronized reporting and filter-aware insights.</Text>
+        <Text style={styles.description}>RMA KPIs, region/type/date/product analytics and synchronized records.</Text>
         <View style={styles.syncRow}>
           <Text style={styles.syncText}>Last synced: {formatDateTime(lastSyncedAt)}</Text>
-          <Pressable disabled={isBusy} onPress={() => void refresh()} style={({ pressed }) => [styles.syncButton, pressed && styles.pressed]}>
-            <Text style={styles.syncButtonText}>{isBusy ? 'Syncing…' : 'Sync now'}</Text>
-          </Pressable>
+          <Pressable disabled={isBusy} onPress={() => void refresh()} style={({ pressed }) => [styles.syncButton, pressed && styles.pressed]}><Text style={styles.syncButtonText}>{isBusy ? 'Syncing…' : 'Sync now'}</Text></Pressable>
         </View>
         <ReportSyncStatus />
       </View>
 
-      {error ? (
-        <View style={styles.errorCard}>
-          <Text style={styles.errorTitle}>RMA refresh issue</Text>
-          <Text style={styles.errorMessage}>{error}</Text>
-          <Pressable onPress={() => void refresh()} style={styles.errorButton}>
-            <Text style={styles.errorButtonText}>Retry</Text>
-          </Pressable>
-        </View>
-      ) : null}
+      {error ? <View style={styles.errorCard}><Text style={styles.errorTitle}>RMA refresh issue</Text><Text style={styles.errorMessage}>{error}</Text><Pressable onPress={() => void refresh()} style={styles.errorButton}><Text style={styles.errorButtonText}>Retry</Text></Pressable></View> : null}
 
       <View style={styles.searchPanel}>
         <Text style={styles.panelEyebrow}>FILTERS</Text>
         <View style={styles.searchRow}>
-          <TextInput
-            value={filters.search}
-            onChangeText={(value) => patch('search', value)}
-            placeholder="Search ticket, product, subject, TSE…"
-            placeholderTextColor={colors.text.muted}
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={styles.searchInput}
-          />
-          <Pressable onPress={() => setFiltersOpen((value) => !value)} style={[styles.filterToggle, filtersOpen && styles.filterToggleActive]}>
-            <Text style={[styles.filterToggleText, filtersOpen && styles.filterToggleTextActive]}>
-              Filters{activeFilterCount ? ` (${activeFilterCount})` : ''}
-            </Text>
-          </Pressable>
+          <TextInput value={filters.search} onChangeText={(value) => patch('search', value)} placeholder="Search ticket, product, subject…" placeholderTextColor={colors.text.muted} autoCapitalize="none" autoCorrect={false} style={styles.searchInput} />
+          <Pressable onPress={() => setFiltersOpen((value) => !value)} style={[styles.filterToggle, filtersOpen && styles.filterToggleActive]}><Text style={[styles.filterToggleText, filtersOpen && styles.filterToggleTextActive]}>Filters{activeFilterCount ? ` (${activeFilterCount})` : ''}</Text></Pressable>
         </View>
 
         {filtersOpen ? (
@@ -203,34 +150,21 @@ export function RmaReportScreen() {
             <ChipGroup label="Month" values={options.months} selected={filters.month} onSelect={(value) => patch('month', value)} renderLabel={(value) => MONTH_LABELS[value] || value} />
             <ChipGroup label="Region" values={options.regions} selected={filters.region} onSelect={(value) => patch('region', value)} />
             <ChipGroup label="RMA type" values={options.rmaTypes} selected={filters.rmaType} onSelect={(value) => patch('rmaType', value)} />
-            <ChipGroup label="TSE" values={options.tses} selected={filters.tse} onSelect={(value) => patch('tse', value)} />
             <View style={styles.dateRow}>
-              <View style={styles.dateField}>
-                <Text style={styles.filterLabel}>From (YYYY-MM-DD)</Text>
-                <TextInput value={filters.dateFrom} onChangeText={(value) => patch('dateFrom', value)} placeholder="2026-01-01" placeholderTextColor={colors.text.muted} style={styles.dateInput} />
-              </View>
-              <View style={styles.dateField}>
-                <Text style={styles.filterLabel}>To (YYYY-MM-DD)</Text>
-                <TextInput value={filters.dateTo} onChangeText={(value) => patch('dateTo', value)} placeholder="2026-12-31" placeholderTextColor={colors.text.muted} style={styles.dateInput} />
-              </View>
+              <DateFilterField label="From date" value={filters.dateFrom} maximumValue={filters.dateTo} onChange={(value) => patch('dateFrom', value)} />
+              <DateFilterField label="To date" value={filters.dateTo} minimumValue={filters.dateFrom} onChange={(value) => patch('dateTo', value)} />
             </View>
-            <Pressable onPress={() => setFilters(EMPTY_RMA_FILTERS)} style={styles.resetButton}>
-              <Text style={styles.resetText}>Reset all filters</Text>
-            </Pressable>
+            <Pressable onPress={() => setFilters(EMPTY_RMA_FILTERS)} style={styles.resetButton}><Text style={styles.resetText}>Reset all filters</Text></Pressable>
           </View>
         ) : null}
       </View>
 
-      <View style={styles.resultSummary}>
-        <Text style={styles.resultTitle}>{filtered.length.toLocaleString()} matching RMA records</Text>
-        <Text style={styles.resultCaption}>from {rows.length.toLocaleString()} deduplicated rows</Text>
-      </View>
+      <View style={styles.resultSummary}><Text style={styles.resultTitle}>{filtered.length.toLocaleString()} matching RMA records</Text><Text style={styles.resultCaption}>from {rows.length.toLocaleString()} RMA records</Text></View>
 
       <View style={styles.kpiGrid}>
         <KpiCard label="Total RMA" value={analytics.kpis.totalRma} accent />
         <KpiCard label="Unique tickets" value={analytics.kpis.uniqueTickets} />
         <KpiCard label="Products" value={analytics.kpis.uniqueProducts} />
-        <KpiCard label="Duplicates removed" value={duplicatesRemoved} />
         <KpiCard label="Data recovery" value={analytics.kpis.dataRecovery} />
         <KpiCard label="RMA" value={analytics.kpis.standardRma} />
         <KpiCard label="Broken plastic" value={analytics.kpis.brokenPlastic} />
@@ -238,46 +172,36 @@ export function RmaReportScreen() {
       </View>
 
       <HorizontalBarChart title="RMA by Region" items={analytics.regionSummary} />
-      <HorizontalBarChart title="RMA Type" items={analytics.typeSummary} />
+      <VerticalBarChart title="RMA Type" items={analytics.typeSummary} />
       <LineTrendChart title="Date-wise RMA" items={analytics.dailySummary} />
-      <DonutChart title="Month-wise RMA" items={analytics.monthSummary} centerLabel="RMA" />
-      <DonutChart title="RMA Team" items={analytics.tseSummary} centerLabel="RMA" />
-      <HorizontalBarChart title="Top Products by RMA" items={analytics.productSummary} maxItems={10} />
+      <VerticalBarChart title="Products by RMA" items={analytics.productSummary} />
 
-      <View style={styles.rowsHeading}>
-        <Text style={styles.panelEyebrow}>RMA DATA</Text>
-        <Text style={styles.rowsTitle}>Matching records</Text>
-        <Text style={styles.rowsCaption}>Search and filters apply to the KPIs, breakdowns and records below.</Text>
+      <View style={styles.tableLaunchCard}>
+        <View style={styles.tableLaunchCopy}>
+          <Text style={styles.panelEyebrow}>RMA REPORT DATA</Text>
+          <Text style={styles.tableLaunchTitle}>Open RMA table</Text>
+          <Text style={styles.tableLaunchCaption}>{filtered.length.toLocaleString()} filtered records available in a dedicated table screen.</Text>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push({ pathname: '/report-table', params: { report: 'rma', filters: JSON.stringify(filters) } })}
+          style={({ pressed }) => [styles.showTableButton, pressed && styles.pressed]}
+        >
+          <Text style={styles.showTableButtonText}>Show Table</Text>
+          <Text style={styles.showTableButtonArrow}>›</Text>
+        </Pressable>
       </View>
     </View>
   );
 
   return (
-    <FlatList
-      data={filtered}
-      keyExtractor={(item, index) => `${item._ticketNumber || 'rma'}-${String(item.id ?? index)}`}
-      renderItem={({ item }) => <RmaCard row={item} />}
-      ListHeaderComponent={header}
-      ListEmptyComponent={
-        status === 'loading' ? (
-          <View style={styles.loadingCard}>
-            <ActivityIndicator color={colors.brand.ink} />
-            <Text style={styles.loadingText}>Loading RMA report…</Text>
-          </View>
-        ) : (
-          <View style={styles.loadingCard}>
-            <Text style={styles.emptyTitle}>No matching RMA records</Text>
-            <Text style={styles.emptyText}>Try clearing one or more filters.</Text>
-          </View>
-        )
-      }
+    <ScrollView
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={status === 'refreshing'} onRefresh={() => void refresh('manual')} tintColor={colors.brand.ink} colors={[colors.brand.ink]} progressViewOffset={8} />}
-      initialNumToRender={12}
-      maxToRenderPerBatch={12}
-      windowSize={7}
-      removeClippedSubviews
-    />
+      showsVerticalScrollIndicator={false}
+    >
+      {header}
+    </ScrollView>
   );
 }
 
@@ -318,8 +242,6 @@ const styles = StyleSheet.create({
   chipText: { color: colors.text.secondary, fontSize: 10, fontWeight: '800' },
   chipTextActive: { color: colors.brand.ink },
   dateRow: { flexDirection: 'row', gap: spacing.sm },
-  dateField: { flex: 1, gap: 6 },
-  dateInput: { minHeight: 42, paddingHorizontal: 10, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border.default, backgroundColor: colors.surface.soft, color: colors.text.primary, fontSize: 11, fontWeight: '700' },
   resetButton: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 9, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border.default },
   resetText: { color: colors.text.brand, fontSize: 10, fontWeight: '900' },
   resultSummary: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', gap: 5, paddingHorizontal: 2 },
@@ -332,35 +254,30 @@ const styles = StyleSheet.create({
   kpiAccentLabel: { color: colors.brand.ink },
   kpiValue: { marginTop: 12, color: colors.text.primary, fontSize: 26, fontWeight: '900' },
   kpiAccentValue: { color: colors.brand.ink },
-  panel: { padding: spacing.md, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border.default, backgroundColor: colors.surface.card, ...effects.soft },
-  panelTitle: { marginTop: 5, color: colors.text.primary, ...typography.sectionTitle },
-  barList: { marginTop: spacing.md, gap: 12 },
-  barItem: { gap: 6 },
-  barLabelRow: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm },
-  barLabel: { flex: 1, color: colors.text.secondary, fontSize: 11, fontWeight: '800' },
-  barValue: { color: colors.text.primary, fontSize: 11, fontWeight: '900' },
-  barTrack: { height: 8, overflow: 'hidden', borderRadius: radius.pill, backgroundColor: colors.surface.soft },
-  barFill: { height: '100%', borderRadius: radius.pill, backgroundColor: colors.brand.accent },
   rowsHeading: { paddingTop: spacing.sm },
   rowsTitle: { marginTop: 5, color: colors.text.primary, ...typography.sectionTitle },
   rowsCaption: { marginTop: 4, color: colors.text.muted, fontSize: 10, fontWeight: '600' },
+  tableLaunchCard: { marginTop: spacing.sm, padding: spacing.md, gap: spacing.md, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border.default, backgroundColor: colors.surface.card, ...effects.soft },
+  tableLaunchCopy: { gap: 4 },
+  tableLaunchTitle: { color: colors.text.primary, fontSize: 16, fontWeight: '900' },
+  tableLaunchCaption: { color: colors.text.muted, fontSize: 11, lineHeight: 17, fontWeight: '600' },
+  showTableButton: { minHeight: 48, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: radius.md, backgroundColor: colors.brand.ink },
+  showTableButtonText: { color: colors.text.inverse, fontSize: 12, fontWeight: '900' },
+  showTableButtonArrow: { color: colors.text.inverse, fontSize: 22, lineHeight: 22, fontWeight: '700' },
   recordCard: { marginBottom: spacing.sm, padding: spacing.md, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border.default, backgroundColor: colors.surface.card, ...effects.soft },
   recordTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   ticketNumberPill: { maxWidth: '60%', paddingHorizontal: 9, paddingVertical: 5, borderRadius: radius.pill, backgroundColor: colors.brand.accent },
   ticketNumber: { color: colors.brand.ink, fontSize: 10, fontWeight: '900' },
   recordDate: { flexShrink: 1, color: colors.text.muted, fontSize: 10, fontWeight: '800', textAlign: 'right' },
-  typeRow: { marginTop: 10, flexDirection: 'row' },
-  typePill: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: radius.pill, backgroundColor: colors.surface.soft },
-  typeText: { color: colors.text.brand, fontSize: 9, fontWeight: '900' },
-  recordSubject: { marginTop: 10, color: colors.text.primary, fontSize: 14, lineHeight: 20, fontWeight: '900' },
-  recordMetaRow: { marginTop: 8, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
-  recordMetaStrong: { color: colors.text.brand, fontSize: 11, fontWeight: '900' },
-  recordMetaDot: { paddingHorizontal: 6, color: colors.text.muted, fontSize: 11 },
-  recordMeta: { color: colors.text.secondary, fontSize: 11, fontWeight: '700' },
-  detailGrid: { marginTop: spacing.md, flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  detailCell: { width: '48%', minHeight: 62, padding: 10, borderRadius: radius.md, backgroundColor: colors.surface.soft },
+  regionRow: { marginTop: 11, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  regionValue: { color: colors.text.brand, fontSize: 11, fontWeight: '900' },
+  detailBlock: { marginTop: 10, padding: 10, borderRadius: radius.md, backgroundColor: colors.surface.soft },
   detailLabel: { color: colors.text.muted, fontSize: 8, fontWeight: '900', letterSpacing: 0.8 },
-  detailValue: { marginTop: 5, color: colors.text.primary, fontSize: 10, lineHeight: 15, fontWeight: '800' },
+  detailValue: { marginTop: 5, color: colors.text.primary, fontSize: 11, lineHeight: 16, fontWeight: '800' },
+  recordSubject: { marginTop: 10, color: colors.text.primary, fontSize: 14, lineHeight: 20, fontWeight: '900' },
+  typeRow: { marginTop: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  typePill: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: radius.pill, backgroundColor: colors.brand.accent },
+  typeText: { color: colors.brand.ink, fontSize: 9, fontWeight: '900' },
   loadingCard: { marginTop: spacing.md, padding: spacing.xl, alignItems: 'center', gap: spacing.sm, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border.default, backgroundColor: colors.surface.card, ...effects.soft },
   loadingText: { color: colors.text.secondary, fontSize: 12, fontWeight: '700' },
   emptyTitle: { color: colors.text.primary, fontSize: 13, fontWeight: '900' },

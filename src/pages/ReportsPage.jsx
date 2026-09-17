@@ -28,6 +28,7 @@ import TicketFilters from "../components/tickets/TicketFilters";
 import TicketKpiCards from "../components/tickets/TicketKpiCards";
 import ChartPanel from "../components/dashboard/ChartPanel";
 import ExportActions from "../components/export/ExportActions";
+import ZendeskTicketLink from "../components/common/ZendeskTicketLink";
 
 import SatisfactionFilters from "../components/satisfaction/SatisfactionFilters";
 import SatisfactionKpiCards from "../components/satisfaction/SatisfactionKpiCards";
@@ -72,6 +73,60 @@ function cleanText(value) {
 
 function normalizeKey(value) {
   return cleanText(value).toLowerCase();
+}
+
+function getRmaIssue(row = {}) {
+  return cleanText(
+    row.issues ??
+      row.issue ??
+      row.rmaIssues ??
+      row.rma_issues ??
+      row.issueType ??
+      row.issue_type
+  );
+}
+
+function normalizeWarrantyStatus(value) {
+  const raw = cleanText(value);
+  const key = normalizeKey(raw)
+    .replace(/[\/_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!key) return "";
+
+  if ([
+    "in warranty",
+    "within warranty",
+    "under warranty",
+    "warranty",
+    "yes",
+  ].includes(key)) {
+    return "In Warranty";
+  }
+
+  if ([
+    "out of warranty",
+    "out warranty",
+    "oow",
+    "expired warranty",
+    "warranty expired",
+    "no warranty",
+    "no",
+  ].includes(key)) {
+    return "Out of Warranty";
+  }
+
+  return raw;
+}
+
+function getRmaWarrantyStatus(row = {}) {
+  return normalizeWarrantyStatus(
+    row.warrantyStatus ??
+      row.warranty_status ??
+      row.warranty ??
+      row["Warranty Status"]
+  );
 }
 
 function normalizeProcedure(value) {
@@ -365,6 +420,16 @@ function buildRmaAnalytics(rows = []) {
     byRegion: makeRmaSummary(rows, (row) => normalizeRegionLabel(row.region)),
 
     byRmaType: makeRmaSummary(rows, (row) => row.rmaType),
+
+    byIssue: makeRmaSummary(
+      rows.filter((row) => getRmaIssue(row)),
+      (row) => getRmaIssue(row)
+    ),
+
+    byWarrantyStatus: makeRmaSummary(
+      rows.filter((row) => getRmaWarrantyStatus(row)),
+      (row) => getRmaWarrantyStatus(row)
+    ),
 
     byDate: makeRmaSummary(rows, (row) => row.date).sort((a, b) =>
       String(a.name).localeCompare(String(b.name))
@@ -667,18 +732,59 @@ function buildTicketRmaKpiCounts(ticketRows = [], rmaRows = []) {
     return ticketId && ticketIds.has(ticketId);
   });
 
-  const dataRecoveryCount = matchingRmaRows.filter((row) => {
+  const dataRecoveryRmaRows = matchingRmaRows.filter((row) => {
     const type = normalizeRmaKpiType(row.rmaType);
     return type === "data recovery" || type === "data recovery rma";
+  });
+
+  const exactRmaRows = matchingRmaRows.filter(
+    (row) => normalizeRmaKpiType(row.rmaType) === "rma"
+  );
+
+  // Ticket Support Category is a second valid source for these two Ticket KPIs.
+  // Only add a Ticket-sheet row when the dedicated RMA tab does not already
+  // contribute the same classification for that ticket, preventing duplicates.
+  const dataRecoveryRmaTicketIds = new Set(
+    dataRecoveryRmaRows
+      .map((row) => normalizeTicketIdForKpi(row.ticketNumber))
+      .filter(Boolean)
+  );
+
+  const exactRmaTicketIds = new Set(
+    exactRmaRows
+      .map((row) => normalizeTicketIdForKpi(row.ticketNumber))
+      .filter(Boolean)
+  );
+
+  const ticketDataRecoveryFallback = ticketRows.filter((row) => {
+    const ticketId = normalizeTicketIdForKpi(
+      row.ticketNumber || row.ticket_number || row.ticketNo || row.ticket_id || row.ticketId
+    );
+    const supportCategory = normalizeRmaKpiType(
+      row.supportCategory || row.support_category || row.category
+    );
+
+    return (
+      ticketId &&
+      (supportCategory === "data recovery" || supportCategory === "data recovery rma") &&
+      !dataRecoveryRmaTicketIds.has(ticketId)
+    );
   }).length;
 
-  const rmaCount = matchingRmaRows.filter(
-    (row) => normalizeRmaKpiType(row.rmaType) === "rma"
-  ).length;
+  const ticketRmaFallback = ticketRows.filter((row) => {
+    const ticketId = normalizeTicketIdForKpi(
+      row.ticketNumber || row.ticket_number || row.ticketNo || row.ticket_id || row.ticketId
+    );
+    const supportCategory = normalizeRmaKpiType(
+      row.supportCategory || row.support_category || row.category
+    );
+
+    return ticketId && supportCategory === "rma" && !exactRmaTicketIds.has(ticketId);
+  }).length;
 
   return {
-    dataRecoveryCount,
-    rmaCount,
+    dataRecoveryCount: dataRecoveryRmaRows.length + ticketDataRecoveryFallback,
+    rmaCount: exactRmaRows.length + ticketRmaFallback,
   };
 }
 
@@ -918,11 +1024,15 @@ function TicketTabbedTable({
                 className="text-slate-700 transition hover:bg-slate-50"
               >
                 <td className="whitespace-nowrap px-4 py-3 font-bold text-slate-950">
-                  {cleanText(
-                    ticket.ticketNumber ||
+                  <ZendeskTicketLink
+                    value={
+                      ticket.ticketNumber ||
                       ticket.ticket_number ||
-                      ticket.ticketNo
-                  ) || "-"}
+                      ticket.ticketNo ||
+                      ticket.ticketId ||
+                      ticket.ticket_id
+                    }
+                  />
                 </td>
 
                 <td className="whitespace-nowrap px-4 py-3">
@@ -1042,6 +1152,8 @@ export default function ReportPageSheet() {
     month: "",
     region: "",
     rmaType: "",
+    issue: "",
+    warrantyStatus: "",
     dateFrom: "",
     dateTo: "",
   });
@@ -1128,6 +1240,8 @@ export default function ReportPageSheet() {
       month: "",
       region: "",
       rmaType: "",
+      issue: "",
+      warrantyStatus: "",
       dateFrom: "",
       dateTo: "",
     });
@@ -1227,6 +1341,10 @@ export default function ReportPageSheet() {
         row.feedback,
         row.reason,
         row.rating,
+        row.internalNote,
+        row.internal_note,
+        row.externalTeamNote,
+        row.external_team_note,
       ]
         .map(normalizeKey)
         .join(" ");
@@ -1277,6 +1395,8 @@ export default function ReportPageSheet() {
         normalizeRegionLabel(row.region),
         row.product1,
         row.ticketSubject,
+        getRmaIssue(row),
+        getRmaWarrantyStatus(row),
         row.rmaType,
       ]
         .map(normalizeKey)
@@ -1308,6 +1428,21 @@ export default function ReportPageSheet() {
       if (
         rmaFilters.rmaType &&
         normalizeKey(row.rmaType) !== normalizeKey(rmaFilters.rmaType)
+      ) {
+        return false;
+      }
+
+      if (
+        rmaFilters.issue &&
+        normalizeKey(getRmaIssue(row)) !== normalizeKey(rmaFilters.issue)
+      ) {
+        return false;
+      }
+
+      if (
+        rmaFilters.warrantyStatus &&
+        normalizeKey(getRmaWarrantyStatus(row)) !==
+          normalizeKey(rmaFilters.warrantyStatus)
       ) {
         return false;
       }
@@ -1354,6 +1489,28 @@ export default function ReportPageSheet() {
     () => buildRmaAnalytics(filteredRma),
     [filteredRma]
   );
+
+  function handleSatisfactionRowUpdated(row, patch) {
+    const targetSheetRow = row?.sheet_row_number || row?.sheetRowNumber;
+    const targetTicketId = cleanText(
+      row?.ticketId || row?.ticket_id || row?.ticketNumber || row?.ticket_number
+    );
+
+    setSatisfactionRows((current) =>
+      current.map((item) => {
+        const itemSheetRow = item?.sheet_row_number || item?.sheetRowNumber;
+        const itemTicketId = cleanText(
+          item?.ticketId || item?.ticket_id || item?.ticketNumber || item?.ticket_number
+        );
+
+        const matches = targetSheetRow
+          ? String(itemSheetRow || "") === String(targetSheetRow)
+          : itemTicketId && itemTicketId === targetTicketId;
+
+        return matches ? { ...item, ...patch } : item;
+      })
+    );
+  }
 
   const currentModeLabel =
     mode === "tickets"
@@ -1630,6 +1787,7 @@ export default function ReportPageSheet() {
               <SatisfactionReportTable
                 title="Customer Satisfaction Report Data"
                 rows={filteredSatisfaction}
+                onRowUpdated={handleSatisfactionRowUpdated}
               />
             </>
           ) : (
@@ -1648,6 +1806,7 @@ export default function ReportPageSheet() {
 
               <RmaAnalyticsPanel
                 analytics={rmaAnalytics}
+                rows={filteredRma}
                 prefix="sheet-rma"
               />
 
