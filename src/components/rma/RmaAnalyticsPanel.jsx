@@ -27,12 +27,6 @@ export default function RmaAnalyticsPanel({
   return (
     <section className="space-y-8">
       <div>
-        <SectionHeading
-          eyebrow="Timeline"
-          title="Date-wise RMA"
-          description="Daily RMA movement from the unique Ticket # records currently included by the active filters."
-        />
-
         <ChartPanel
           chartId={`${prefix}_rma_by_date`}
           title="Date-wise RMA"
@@ -41,36 +35,20 @@ export default function RmaAnalyticsPanel({
         />
       </div>
 
-      <div>
-        <SectionHeading
-          eyebrow="Monthly Insights"
-          title="RMA Monthly Performance"
-          description="Monthly volume, RMA TYPE category mix, and issue movement are grouped together for faster trend reading."
+      <div className="space-y-6">
+        <ChartPanel
+          chartId={`${prefix}_rma_month_wise_trend`}
+          title="RMA Month-wise Trend"
+          data={safeAnalytics.byMonth || []}
+          type="line"
         />
 
-        <div className="grid gap-6 xl:grid-cols-2">
-          <ChartPanel
-            chartId={`${prefix}_rma_month_wise_trend`}
-            title="RMA Month-wise Trend"
-            data={safeAnalytics.byMonth || []}
-            type="line"
-          />
+        <RmaMonthlyInsights rows={rows} mode="overview" />
 
-          <RmaMonthlyInsights rows={rows} mode="overview" />
-        </div>
-
-        <div className="mt-6">
-          <RmaMonthlyInsights rows={rows} mode="issues" />
-        </div>
+        <RmaMonthlyInsights rows={rows} mode="issues" />
       </div>
 
       <div>
-        <SectionHeading
-          eyebrow="Issue & Warranty Analysis"
-          title="Issue Distribution and Warranty Coverage"
-          description="Compare the overall issue mix with warranty coverage for the same filtered RMA population."
-        />
-
         <div className="grid gap-6 xl:grid-cols-2">
           <ChartPanel
             chartId={`${prefix}_rma_overall_issues`}
@@ -89,12 +67,6 @@ export default function RmaAnalyticsPanel({
       </div>
 
       <div>
-        <SectionHeading
-          eyebrow="RMA Classification"
-          title="Region and RMA Type"
-          description="Regional distribution and the dedicated RMA Sheet RMA TYPE classification are shown side by side."
-        />
-
         <div className="grid gap-6 xl:grid-cols-2">
           <ChartPanel
             chartId={`${prefix}_rma_by_region`}
@@ -113,12 +85,6 @@ export default function RmaAnalyticsPanel({
       </div>
 
       <div>
-        <SectionHeading
-          eyebrow="Product Analysis"
-          title="Products by RMA"
-          description="Product 1 distribution across the final unique-ticket RMA dataset."
-        />
-
         <ChartPanel
           chartId={`${prefix}_rma_by_product`}
           title="Products by RMA"
