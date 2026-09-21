@@ -13,6 +13,43 @@ import {
 
 import { getChartColors } from "../../utils/storage";
 
+const RMA_CATEGORY_COLORS = {
+  RMA: "#C7FF00",
+  "Data Recovery": "#334155",
+  "Data Recovery RMA": "#0F172A",
+  "Date Recovery": "#2563EB",
+  "Broken Plastic": "#F97316",
+  "Repair & Replaced": "#8B5CF6",
+  "Warranty Update": "#06B6D4",
+  "Warranty Claim": "#E11D48",
+};
+
+const RMA_FALLBACK_COLORS = [
+  "#14B8A6",
+  "#F59E0B",
+  "#EC4899",
+  "#6366F1",
+  "#22C55E",
+  "#0EA5E9",
+  "#A855F7",
+  "#EA580C",
+  "#475569",
+];
+
+function getRmaCategoryColor(label, index, themeColors = []) {
+  const normalized = cleanText(label);
+
+  if (RMA_CATEGORY_COLORS[normalized]) {
+    return RMA_CATEGORY_COLORS[normalized];
+  }
+
+  return (
+    RMA_FALLBACK_COLORS[index % RMA_FALLBACK_COLORS.length] ||
+    themeColors[index % themeColors.length] ||
+    "#64748B"
+  );
+}
+
 function cleanText(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ");
 }
@@ -325,7 +362,7 @@ export default function RmaMonthlyInsights({ rows = [], mode = "all" }) {
                       dataKey={item.key}
                       name={item.label}
                       stackId="rma-month"
-                      fill={colors[index % colors.length] || "#2f3d46"}
+                      fill={getRmaCategoryColor(item.label, index, colors)}
                       radius={
                         index === typeDataset.series.length - 1
                           ? [6, 6, 0, 0]

@@ -322,54 +322,9 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <div className="mt-5 flex items-center gap-3">
-              <div className="h-px flex-1 bg-slate-200" />
+           
 
-              <span className="shrink-0 text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">
-                Development Access
-              </span>
-
-              <div className="h-px flex-1 bg-slate-200" />
-            </div>
-
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              {quickAccounts.map(
-                (account) => (
-                  <button
-                    key={account.email}
-                    type="button"
-                    onClick={() =>
-                      useQuickAccount(
-                        account
-                      )
-                    }
-                    className="group min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-left transition hover:border-slate-300 hover:bg-white"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-black text-slate-900">
-                          {account.label}
-                        </p>
-
-                        <p
-                          className="mt-0.5 truncate text-[9px] text-slate-500"
-                          title={
-                            account.email
-                          }
-                        >
-                          {account.email}
-                        </p>
-                      </div>
-
-                      <CheckCircle2
-                        size={13}
-                        className="shrink-0 text-slate-300 transition group-hover:text-lime-600"
-                      />
-                    </div>
-                  </button>
-                )
-              )}
-            </div>
+            
           </div>
         </section>
 
