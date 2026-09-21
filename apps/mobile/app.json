@@ -2,7 +2,7 @@
   "expo": {
     "name": "AngelBird Reporting",
     "slug": "angelbird-reporting",
-    "version": "0.14.4",
+    "version": "0.15.0",
     "orientation": "portrait",
     "scheme": "angelbird-reporting",
     "userInterfaceStyle": "light",
@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.mahimediasolutions.angelbirdreporting",
-      "buildNumber": "5",
+      "buildNumber": "6",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "UIBackgroundModes": [
@@ -28,7 +28,7 @@
         "backgroundColor": "#FFFFFF",
         "monochromeImage": "./assets/brand/adaptive-icon-monochrome.png"
       },
-      "versionCode": 7,
+      "versionCode": 8,
       "blockedPermissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
@@ -64,7 +64,8 @@
         {
           "configureAndroidBackup": true
         }
-      ]
+      ],
+      "expo-background-task"
     ],
     "experiments": {
       "typedRoutes": true
@@ -75,15 +76,17 @@
       "security": "role-allowlist",
       "charts": "native-mixed-line-donut-horizontal-bar",
       "androidSafeArea": "system-navigation-aware-tabs",
-      "webParity": "final-web-reporting-2026-09-13-v2",
+      "webParity": "rma-unique-issues-warranty-notes-2026-09-17",
       "chartInteraction": "tap-hover-tooltip-plus-ticket-pinch-zoom",
       "reportTables": "dedicated-screen-with-back-header",
+      "rmaSource": "dedicated-rma-tab-unique-ticket-client-safeguard",
       "router": {},
       "eas": {
         "projectId": "345fab4c-d159-4ad4-abdd-a2c6b63e0e7c"
       }
     },
     "description": "Secure AngelBird mobile reporting for Ticket, Satisfaction and RMA analytics.",
-    "primaryColor": "#D7FF00"
+    "primaryColor": "#D7FF00",
+    "owner": "aamirali422"
   }
 }

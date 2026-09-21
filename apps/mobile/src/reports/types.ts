@@ -27,6 +27,10 @@ export type RmaReportRow = {
   product2: string;
   ticketSubject: string;
   rmaType: string;
+  issues?: string;
+  issue?: string;
+  warrantyStatus?: string;
+  warranty_status?: string;
   source: string;
 };
 
@@ -34,7 +38,7 @@ export type MetricItem = { name: string; value: number };
 
 export type RmaSheetReportResponse = {
   ok: boolean;
-  source: 'google_sheet' | string;
+  source: 'google_sheet_rma_tab' | 'google_sheet' | string;
   sheetId: string;
   tab: string;
   rows: RmaReportRow[];
@@ -42,17 +46,21 @@ export type RmaSheetReportResponse = {
     totalRows: number;
     rawRows: number;
     duplicateRows: number;
+    sourceRows?: number;
+    sourceTab?: string;
     generatedAt: string;
   };
   analytics: {
     totalRma: number;
     uniqueTickets: number;
     byRegion: MetricItem[];
-    byTse: MetricItem[];
+    byTse?: MetricItem[];
     byRmaType: MetricItem[];
     byDate: MetricItem[];
     byMonth: MetricItem[];
     byProduct: MetricItem[];
+    byIssue?: MetricItem[];
+    byWarrantyStatus?: MetricItem[];
   };
 };
 

@@ -58,7 +58,8 @@ export function SatisfactionAiModal({ row, onClose }: Props) {
           rating: row._rating,
           comment: row._comment,
           reason: row._reason === 'No reason given' ? '' : row._reason,
-          solved: row._isSolved,
+          internalNote: row._internalNote,
+          externalTeamNote: row._externalTeamNote,
         },
       });
       setAnalysis(result);
@@ -120,6 +121,20 @@ export function SatisfactionAiModal({ row, onClose }: Props) {
                 <View style={styles.inputCard}>
                   <Text style={styles.factLabel}>CUSTOMER REASON</Text>
                   <Text style={styles.bodyText}>{row._reason}</Text>
+                </View>
+              ) : null}
+
+              {row._internalNote ? (
+                <View style={styles.inputCard}>
+                  <Text style={styles.factLabel}>INTERNAL TEAM NOTE</Text>
+                  <Text style={styles.bodyText}>{row._internalNote}</Text>
+                </View>
+              ) : null}
+
+              {row._externalTeamNote ? (
+                <View style={styles.inputCard}>
+                  <Text style={styles.factLabel}>EXTERNAL TEAM NOTE</Text>
+                  <Text style={styles.bodyText}>{row._externalTeamNote}</Text>
                 </View>
               ) : null}
 

@@ -8,6 +8,8 @@ export type RmaFiltersState = {
   month: string;
   region: string;
   rmaType: string;
+  issue: string;
+  warrantyStatus: string;
   dateFrom: string;
   dateTo: string;
 };
@@ -20,6 +22,20 @@ export type NormalizedRma = RmaReportRow & {
   _product1: string;
   _subject: string;
   _rmaType: string;
+  _issue: string;
+  _warrantyStatus: string;
+};
+
+export type MonthlyCategoryItem = {
+  month: string;
+  total: number;
+  categories: RmaMetric[];
+};
+
+export type IssueHeatmapData = {
+  months: string[];
+  issues: Array<{ name: string; total: number; values: Record<string, number> }>;
+  maxValue: number;
 };
 
 export const EMPTY_RMA_FILTERS: RmaFiltersState = {
@@ -28,6 +44,8 @@ export const EMPTY_RMA_FILTERS: RmaFiltersState = {
   month: '',
   region: '',
   rmaType: '',
+  issue: '',
+  warrantyStatus: '',
   dateFrom: '',
   dateTo: '',
 };
@@ -100,18 +118,77 @@ function normalizeRegion(value: unknown) {
 function normalizeRmaType(value: unknown) {
   const raw = cleanText(value);
   const normalized = key(raw);
-  if (normalized === 'dr' || normalized === 'data recovery' || normalized === 'date recovery') return 'Data Recovery';
+  if (!normalized) return '';
+  if (normalized === 'dr' || normalized === 'data recovery') return 'Data Recovery';
   if (['dr rma', 'data recovery rma', 'date recovery rma'].includes(normalized)) return 'Data Recovery RMA';
+  if (normalized === 'date recovery') return 'Date Recovery';
   if (normalized === 'rma') return 'RMA';
+  if (['faulty', 'fault', 'defective', 'defect', 'faulty unit', 'faulty product'].includes(normalized)) return 'Faulty';
   if (normalized === 'broken plastic' || normalized === 'broken plastics') return 'Broken Plastic';
   if (['repair & replaced', 'repair and replaced', 'repaired & replaced', 'repair replaced'].includes(normalized)) return 'Repair & Replaced';
   return raw;
 }
 
+function normalizeWarrantyStatus(value: unknown) {
+  const raw = cleanText(value);
+  const normalized = key(raw).replace(/[\/_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!normalized) return '';
+  if (['in warranty', 'within warranty', 'under warranty', 'warranty', 'yes'].includes(normalized)) return 'In Warranty';
+  if (['out of warranty', 'out warranty', 'oow', 'expired warranty', 'warranty expired', 'no warranty', 'no'].includes(normalized)) return 'Out of Warranty';
+  return raw;
+}
+
+function isBlank(value: unknown) {
+  return cleanText(value) === '';
+}
+
+function mergeRows(primary: NormalizedRma, fallback: NormalizedRma): NormalizedRma {
+  const merged = { ...fallback, ...primary } as NormalizedRma;
+  for (const field of Object.keys({ ...fallback, ...primary })) {
+    const name = field as keyof NormalizedRma;
+    if (isBlank(primary[name]) && !isBlank(fallback[name])) {
+      (merged as unknown as Record<string, unknown>)[field] = fallback[name] as unknown;
+    }
+  }
+  return merged;
+}
+
+function freshness(row: NormalizedRma) {
+  const dateScore = row._date ? Date.parse(`${row._date}T00:00:00Z`) : 0;
+  const idScore = Number(row.id || 0);
+  return { dateScore: Number.isFinite(dateScore) ? dateScore : 0, idScore: Number.isFinite(idScore) ? idScore : 0 };
+}
+
+export function deduplicateRmaRows(rows: NormalizedRma[]) {
+  const byTicket = new Map<string, NormalizedRma>();
+  const withoutTicket: NormalizedRma[] = [];
+
+  rows.forEach((row) => {
+    const ticket = key(row._ticketNumber);
+    if (!ticket) {
+      withoutTicket.push(row);
+      return;
+    }
+    const existing = byTicket.get(ticket);
+    if (!existing) {
+      byTicket.set(ticket, row);
+      return;
+    }
+    const a = freshness(row);
+    const b = freshness(existing);
+    const rowIsNewer = a.dateScore > b.dateScore || (a.dateScore === b.dateScore && a.idScore >= b.idScore);
+    byTicket.set(ticket, rowIsNewer ? mergeRows(row, existing) : mergeRows(existing, row));
+  });
+
+  return [...byTicket.values(), ...withoutTicket].sort((a, b) => a._date.localeCompare(b._date) || a._ticketNumber.localeCompare(b._ticketNumber));
+}
+
 export function normalizeRmaRows(rows: RmaReportRow[]) {
-  return rows
+  const normalized = rows
     .map<NormalizedRma>((row) => {
       const date = normalizeDate(row.date);
+      const issue = cleanText(row.issues || row.issue || (row as Record<string, unknown>).issue_type || (row as Record<string, unknown>).rma_issues);
+      const warranty = normalizeWarrantyStatus(row.warrantyStatus || row.warranty_status || (row as Record<string, unknown>).warranty);
       return {
         ...row,
         _ticketNumber: cleanText(row.ticketNumber).replace(/\.0+$/, ''),
@@ -121,9 +198,13 @@ export function normalizeRmaRows(rows: RmaReportRow[]) {
         _product1: cleanText(row.product1),
         _subject: cleanText(row.ticketSubject),
         _rmaType: normalizeRmaType(row.rmaType),
+        _issue: issue,
+        _warrantyStatus: warranty,
       };
     })
-    .filter((row) => row._ticketNumber);
+    .filter((row) => row._ticketNumber || row._rmaType);
+
+  return deduplicateRmaRows(normalized);
 }
 
 function includesSearch(row: NormalizedRma, search: string) {
@@ -135,6 +216,8 @@ function includesSearch(row: NormalizedRma, search: string) {
     row._product1,
     row._subject,
     row._rmaType,
+    row._issue,
+    row._warrantyStatus,
   ].join(' ').toLowerCase();
   return haystack.includes(search.toLowerCase());
 }
@@ -149,6 +232,8 @@ export function filterRmaRows(rows: NormalizedRma[], filters: RmaFiltersState) {
     if (filters.month && row._date.slice(5, 7) !== filters.month) return false;
     if (filters.region && row._region !== filters.region) return false;
     if (filters.rmaType && row._rmaType !== filters.rmaType) return false;
+    if (filters.issue && row._issue !== filters.issue) return false;
+    if (filters.warrantyStatus && row._warrantyStatus !== filters.warrantyStatus) return false;
     if (dateFrom && (!row._date || row._date < dateFrom)) return false;
     if (dateTo && (!row._date || row._date > dateTo)) return false;
     return true;
@@ -166,6 +251,8 @@ export function rmaFilterOptions(rows: NormalizedRma[]) {
     months: uniqueSorted(rows.map((row) => row._date.slice(5, 7)).filter((value) => /^\d{2}$/.test(value))),
     regions: uniqueSorted(rows.map((row) => row._region)),
     rmaTypes: uniqueSorted(rows.map((row) => row._rmaType)),
+    issues: uniqueSorted(rows.map((row) => row._issue)),
+    warrantyStatuses: uniqueSorted(rows.map((row) => row._warrantyStatus)),
   };
 }
 
@@ -192,27 +279,61 @@ function chronologicalSummary(rows: NormalizedRma[], getter: (row: NormalizedRma
   return [...counts.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => a.name.localeCompare(b.name));
 }
 
+function buildMonthlyCategorySummary(rows: NormalizedRma[]): MonthlyCategoryItem[] {
+  const buckets = new Map<string, NormalizedRma[]>();
+  rows.forEach((row) => {
+    const month = row._date.slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(month)) return;
+    const bucket = buckets.get(month) || [];
+    bucket.push(row);
+    buckets.set(month, bucket);
+  });
+  return [...buckets.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, bucket]) => ({ month, total: bucket.length, categories: makeSummary(bucket, (row) => row._rmaType) }));
+}
+
+function buildIssueHeatmap(rows: NormalizedRma[]): IssueHeatmapData {
+  const months = uniqueSorted(rows.map((row) => row._date.slice(0, 7)).filter((month) => /^\d{4}-\d{2}$/.test(month)));
+  const issueTotals = new Map<string, number>();
+  const values = new Map<string, number>();
+  rows.forEach((row) => {
+    if (!row._issue) return;
+    const month = row._date.slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(month)) return;
+    issueTotals.set(row._issue, (issueTotals.get(row._issue) || 0) + 1);
+    const composite = `${row._issue}|||${month}`;
+    values.set(composite, (values.get(composite) || 0) + 1);
+  });
+  const issues = [...issueTotals.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([name, total]) => ({
+      name,
+      total,
+      values: Object.fromEntries(months.map((month) => [month, values.get(`${name}|||${month}`) || 0])),
+    }));
+  const maxValue = Math.max(0, ...issues.flatMap((issue) => Object.values(issue.values)));
+  return { months, issues, maxValue };
+}
+
 export function buildRmaAnalytics(rows: NormalizedRma[]) {
   const uniqueTickets = new Set(rows.map((row) => key(row._ticketNumber)).filter(Boolean)).size;
   const uniqueProducts = new Set(rows.map((row) => key(row._product1)).filter(Boolean)).size;
-  const dataRecovery = rows.filter((row) => row._rmaType === 'Data Recovery' || row._rmaType === 'Data Recovery RMA').length;
+  const dataRecovery = rows.filter((row) => row._rmaType === 'Data Recovery' || row._rmaType === 'Data Recovery RMA' || row._rmaType === 'Date Recovery').length;
   const standardRma = rows.filter((row) => row._rmaType === 'RMA').length;
   const brokenPlastic = rows.filter((row) => row._rmaType === 'Broken Plastic').length;
   const repairReplaced = rows.filter((row) => row._rmaType === 'Repair & Replaced').length;
 
   return {
-    kpis: {
-      totalRma: rows.length,
-      uniqueTickets,
-      uniqueProducts,
-      dataRecovery,
-      standardRma,
-      brokenPlastic,
-      repairReplaced,
-    },
+    kpis: { totalRma: rows.length, uniqueTickets, uniqueProducts, dataRecovery, standardRma, brokenPlastic, repairReplaced },
     dailySummary: chronologicalSummary(rows, (row) => row._date),
+    monthlySummary: chronologicalSummary(rows, (row) => row._date.slice(0, 7)),
+    monthlyCategorySummary: buildMonthlyCategorySummary(rows),
+    issueHeatmap: buildIssueHeatmap(rows),
+    issueSummary: makeSummary(rows, (row) => row._issue),
+    warrantySummary: makeSummary(rows, (row) => row._warrantyStatus),
     regionSummary: makeSummary(rows, (row) => row._region),
     typeSummary: makeSummary(rows, (row) => row._rmaType),
-    productSummary: makeSummary(rows, (row) => row._product1),
+    productSummary: makeSummary(rows, (row) => row._product1).filter((item) => !['unknown', 'na', '-'].includes(key(item.name))),
   };
 }

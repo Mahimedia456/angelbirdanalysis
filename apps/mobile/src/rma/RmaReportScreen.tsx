@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 
-import { HorizontalBarChart, LineTrendChart, VerticalBarChart } from '@/components/ReportCharts';
+import { DonutChart, HorizontalBarChart, IssueHeatmapChart, LineTrendChart, MonthlyCategoryOverview, VerticalBarChart } from '@/components/ReportCharts';
 import { DateFilterField } from '@/components/DateFilterField';
 import { ReportSyncStatus } from '@/components/ReportSyncStatus';
 import { useReportData } from '@/reports/ReportDataProvider';
@@ -94,6 +94,16 @@ function RmaCard({ row }: { row: NormalizedRma }) {
 
       <Text style={styles.recordSubject}>{row._subject || 'No ticket subject'}</Text>
 
+      <View style={styles.detailBlock}>
+        <Text style={styles.detailLabel}>ISSUES</Text>
+        <Text style={styles.detailValue}>{row._issue || '-'}</Text>
+      </View>
+
+      <View style={styles.detailBlock}>
+        <Text style={styles.detailLabel}>WARRANTY STATUS</Text>
+        <Text style={styles.detailValue}>{row._warrantyStatus || '-'}</Text>
+      </View>
+
       <View style={styles.typeRow}>
         <Text style={styles.detailLabel}>RMA TYPE</Text>
         <View style={styles.typePill}><Text style={styles.typeText}>{row._rmaType || 'RMA'}</Text></View>
@@ -127,7 +137,7 @@ export function RmaReportScreen() {
           {isBusy ? <ActivityIndicator size="small" color={colors.brand.ink} /> : null}
         </View>
         <Text style={styles.title}>RMA Report</Text>
-        <Text style={styles.description}>RMA KPIs, region/type/date/product analytics and synchronized records.</Text>
+        <Text style={styles.description}>RMA timeline, category mix, issues, warranty, region/type and product analytics from unique Ticket # records.</Text>
         <View style={styles.syncRow}>
           <Text style={styles.syncText}>Last synced: {formatDateTime(lastSyncedAt)}</Text>
           <Pressable disabled={isBusy} onPress={() => void refresh()} style={({ pressed }) => [styles.syncButton, pressed && styles.pressed]}><Text style={styles.syncButtonText}>{isBusy ? 'Syncing…' : 'Sync now'}</Text></Pressable>
@@ -140,7 +150,7 @@ export function RmaReportScreen() {
       <View style={styles.searchPanel}>
         <Text style={styles.panelEyebrow}>FILTERS</Text>
         <View style={styles.searchRow}>
-          <TextInput value={filters.search} onChangeText={(value) => patch('search', value)} placeholder="Search ticket, product, subject…" placeholderTextColor={colors.text.muted} autoCapitalize="none" autoCorrect={false} style={styles.searchInput} />
+          <TextInput value={filters.search} onChangeText={(value) => patch('search', value)} placeholder="Search ticket, product, issue, warranty…" placeholderTextColor={colors.text.muted} autoCapitalize="none" autoCorrect={false} style={styles.searchInput} />
           <Pressable onPress={() => setFiltersOpen((value) => !value)} style={[styles.filterToggle, filtersOpen && styles.filterToggleActive]}><Text style={[styles.filterToggleText, filtersOpen && styles.filterToggleTextActive]}>Filters{activeFilterCount ? ` (${activeFilterCount})` : ''}</Text></Pressable>
         </View>
 
@@ -150,6 +160,8 @@ export function RmaReportScreen() {
             <ChipGroup label="Month" values={options.months} selected={filters.month} onSelect={(value) => patch('month', value)} renderLabel={(value) => MONTH_LABELS[value] || value} />
             <ChipGroup label="Region" values={options.regions} selected={filters.region} onSelect={(value) => patch('region', value)} />
             <ChipGroup label="RMA type" values={options.rmaTypes} selected={filters.rmaType} onSelect={(value) => patch('rmaType', value)} />
+            <ChipGroup label="Issues" values={options.issues} selected={filters.issue} onSelect={(value) => patch('issue', value)} />
+            <ChipGroup label="Warranty status" values={options.warrantyStatuses} selected={filters.warrantyStatus} onSelect={(value) => patch('warrantyStatus', value)} />
             <View style={styles.dateRow}>
               <DateFilterField label="From date" value={filters.dateFrom} maximumValue={filters.dateTo} onChange={(value) => patch('dateFrom', value)} />
               <DateFilterField label="To date" value={filters.dateTo} minimumValue={filters.dateFrom} onChange={(value) => patch('dateTo', value)} />
@@ -171,10 +183,15 @@ export function RmaReportScreen() {
         <KpiCard label="Repair & replaced" value={analytics.kpis.repairReplaced} />
       </View>
 
+      <LineTrendChart title="Date-wise RMA" items={analytics.dailySummary} enablePinchZoom />
+      <LineTrendChart title="RMA Month-wise Trend" items={analytics.monthlySummary} />
+      <MonthlyCategoryOverview title="Monthly RMA Overview — Category Wise" items={analytics.monthlyCategorySummary} />
+      <IssueHeatmapChart title="Trending Issues by Month" data={analytics.issueHeatmap} />
+      <HorizontalBarChart title="Overall Issues Distribution" items={analytics.issueSummary} />
+      <DonutChart title="Warranty Status" items={analytics.warrantySummary} centerLabel="RMA" />
       <HorizontalBarChart title="RMA by Region" items={analytics.regionSummary} />
       <VerticalBarChart title="RMA Type" items={analytics.typeSummary} />
-      <LineTrendChart title="Date-wise RMA" items={analytics.dailySummary} />
-      <VerticalBarChart title="Products by RMA" items={analytics.productSummary} />
+      <VerticalBarChart title="Products by RMA" items={analytics.productSummary} enablePinchZoom />
 
       <View style={styles.tableLaunchCard}>
         <View style={styles.tableLaunchCopy}>

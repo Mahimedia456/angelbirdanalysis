@@ -35,6 +35,12 @@
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://angelbirdanalysis-api.vercel.app"
       }
+    },
+    "apk": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
     }
   },
   "submit": {

@@ -97,16 +97,105 @@ export function VerticalBarChart({
   title,
   items,
   maxItems,
+  enablePinchZoom = false,
 }: {
   title: string;
   items: ChartMetric[];
   maxItems?: number;
+  enablePinchZoom?: boolean;
 }) {
   const [active, setActive] = useState<ChartMetric | null>(null);
-  const visible = typeof maxItems === 'number' ? items.slice(0, maxItems) : items;
+  const sourceData = typeof maxItems === 'number' ? items.slice(0, maxItems) : items;
+  const [viewport, setViewport] = useState<{ start: number; end: number } | null>(null);
+  const pinchStartRef = useRef<{ start: number; end: number; focusIndex: number; focalRatio: number } | null>(null);
+  const { width: screenWidth } = useWindowDimensions();
+  const totalItems = sourceData.length;
+  const minVisibleItems = Math.min(4, Math.max(2, totalItems));
+  const normalizedViewport = useMemo(() => {
+    if (!viewport || totalItems <= minVisibleItems) return { start: 0, end: totalItems };
+    const start = Math.max(0, Math.min(viewport.start, Math.max(0, totalItems - minVisibleItems)));
+    const end = Math.max(start + minVisibleItems, Math.min(viewport.end, totalItems));
+    return { start, end };
+  }, [viewport, totalItems, minVisibleItems]);
+  const visible = sourceData.slice(normalizedViewport.start, normalizedViewport.end);
+  const isZoomed = normalizedViewport.start > 0 || normalizedViewport.end < totalItems;
   const max = Math.max(1, ...visible.map((item) => item.value));
   const barWidth = 54;
   const barHeight = 150;
+  const gestureWidth = Math.max(250, Math.min(620, screenWidth - 64));
+
+  const pinchGesture = useMemo(() =>
+    Gesture.Pinch()
+      .enabled(enablePinchZoom && totalItems > minVisibleItems)
+      .runOnJS(true)
+      .onStart((event) => {
+        const currentStart = normalizedViewport.start;
+        const currentEnd = normalizedViewport.end;
+        const currentCount = Math.max(1, currentEnd - currentStart);
+        const focalRatio = Math.max(0, Math.min(1, event.focalX / Math.max(1, gestureWidth)));
+        const focusIndex = currentStart + focalRatio * Math.max(0, currentCount - 1);
+        pinchStartRef.current = { start: currentStart, end: currentEnd, focusIndex, focalRatio };
+      })
+      .onUpdate((event) => {
+        const startState = pinchStartRef.current;
+        if (!startState || totalItems <= minVisibleItems) return;
+        const initialCount = Math.max(minVisibleItems, startState.end - startState.start);
+        const targetCount = Math.max(
+          minVisibleItems,
+          Math.min(totalItems, Math.round(initialCount / Math.max(0.25, event.scale))),
+        );
+        if (targetCount >= totalItems) {
+          setViewport(null);
+          setActive(null);
+          return;
+        }
+        const rawStart = Math.round(startState.focusIndex - startState.focalRatio * Math.max(0, targetCount - 1));
+        const nextStart = Math.max(0, Math.min(rawStart, totalItems - targetCount));
+        setViewport({ start: nextStart, end: nextStart + targetCount });
+        setActive(null);
+      })
+      .onEnd(() => {
+        pinchStartRef.current = null;
+      }),
+    [enablePinchZoom, totalItems, minVisibleItems, normalizedViewport.start, normalizedViewport.end, gestureWidth],
+  );
+
+  const resetZoom = () => {
+    setViewport(null);
+    setActive(null);
+  };
+
+  const chartBody = (
+    <View collapsable={false}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.verticalBarScroll}
+      >
+        {visible.map((item) => {
+          const fillHeight = Math.max(6, (item.value / max) * barHeight);
+          return (
+            <Pressable
+              key={`${title}-${item.name}`}
+              accessibilityRole="button"
+              accessibilityLabel={`${item.name}: ${item.value}`}
+              onPress={() => setActive(item)}
+              onPressIn={() => setActive(item)}
+              onHoverIn={() => setActive(item)}
+              onHoverOut={() => setActive((current) => (current?.name === item.name ? null : current))}
+              style={({ pressed }) => [styles.verticalBarItem, { width: barWidth }, pressed && styles.metricPressed]}
+            >
+              <Text style={styles.verticalBarValue}>{item.value.toLocaleString()}</Text>
+              <View style={[styles.verticalBarTrack, { height: barHeight }]}>
+                <View style={[styles.verticalBarFill, { height: fillHeight }]} />
+              </View>
+              <Text numberOfLines={2} style={styles.verticalBarLabel}>{item.name}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
 
   return (
     <View style={styles.card}>
@@ -115,33 +204,19 @@ export function VerticalBarChart({
       {visible.length === 0 ? (
         <Text style={styles.empty}>No values available.</Text>
       ) : (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.verticalBarScroll}
-        >
-          {visible.map((item) => {
-            const fillHeight = Math.max(6, (item.value / max) * barHeight);
-            return (
-              <Pressable
-                key={`${title}-${item.name}`}
-                accessibilityRole="button"
-                accessibilityLabel={`${item.name}: ${item.value}`}
-                onPress={() => setActive(item)}
-                onPressIn={() => setActive(item)}
-                onHoverIn={() => setActive(item)}
-                onHoverOut={() => setActive((current) => (current?.name === item.name ? null : current))}
-                style={({ pressed }) => [styles.verticalBarItem, { width: barWidth }, pressed && styles.metricPressed]}
-              >
-                <Text style={styles.verticalBarValue}>{item.value.toLocaleString()}</Text>
-                <View style={[styles.verticalBarTrack, { height: barHeight }]}>
-                  <View style={[styles.verticalBarFill, { height: fillHeight }]} />
-                </View>
-                <Text numberOfLines={2} style={styles.verticalBarLabel}>{item.name}</Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+        <>
+          {enablePinchZoom ? <GestureDetector gesture={pinchGesture}>{chartBody}</GestureDetector> : chartBody}
+          {enablePinchZoom ? (
+            <View style={styles.zoomHintRow}>
+              <Text style={styles.zoomHint}>Two-finger pinch to zoom</Text>
+              {isZoomed ? (
+                <Pressable accessibilityRole="button" onPress={resetZoom} hitSlop={8}>
+                  <Text style={styles.zoomReset}>Reset zoom</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
+        </>
       )}
     </View>
   );
@@ -234,6 +309,114 @@ function shortLabel(value: string) {
   const month = raw.match(/^(\d{4})-(\d{2})$/);
   if (month?.[1] && month?.[2]) return `${month[2]}/${month[1].slice(2)}`;
   return raw.length > 10 ? raw.slice(0, 10) : raw;
+}
+
+
+export type MonthlyCategoryItem = {
+  month: string;
+  total: number;
+  categories: ChartMetric[];
+};
+
+export type IssueHeatmapData = {
+  months: string[];
+  issues: Array<{ name: string; total: number; values: Record<string, number> }>;
+  maxValue: number;
+};
+
+function monthLabel(value: string) {
+  const match = value.match(/^(\d{4})-(\d{2})$/);
+  if (!match?.[1] || !match?.[2]) return value;
+  const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const index = Number(match[2]) - 1;
+  return `${names[index] || match[2]} ${match[1].slice(2)}`;
+}
+
+export function MonthlyCategoryOverview({
+  title,
+  items,
+}: {
+  title: string;
+  items: MonthlyCategoryItem[];
+}) {
+  return (
+    <View style={styles.card}>
+      <CardHeader eyebrow="MONTHLY OVERVIEW" title={title} />
+      {items.length === 0 ? (
+        <Text style={styles.empty}>No monthly category data available.</Text>
+      ) : (
+        <View style={styles.monthlyCategoryList}>
+          {items.map((item) => (
+            <View key={item.month} style={styles.monthlyCategoryCard}>
+              <View style={styles.monthlyCategoryHeader}>
+                <Text style={styles.monthlyCategoryMonth}>{monthLabel(item.month)}</Text>
+                <Text style={styles.monthlyCategoryTotal}>{item.total.toLocaleString()} total</Text>
+              </View>
+              <View style={styles.monthlyStack}>
+                {item.categories.map((category, index) => (
+                  <View
+                    key={`${item.month}-${category.name}`}
+                    style={[styles.monthlyStackSegment, { flex: Math.max(category.value, 0.25), backgroundColor: chartColor(index) }]}
+                  />
+                ))}
+              </View>
+              <View style={styles.monthlyLegendWrap}>
+                {item.categories.map((category, index) => (
+                  <View key={`${item.month}-legend-${category.name}`} style={styles.monthlyLegendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: chartColor(index) }]} />
+                    <Text numberOfLines={1} style={styles.monthlyLegendName}>{category.name}</Text>
+                    <Text style={styles.monthlyLegendValue}>{category.value.toLocaleString()}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+export function IssueHeatmapChart({
+  title,
+  data,
+}: {
+  title: string;
+  data: IssueHeatmapData;
+}) {
+  return (
+    <View style={styles.card}>
+      <CardHeader eyebrow="TREND ANALYSIS" title={title} />
+      {!data.months.length || !data.issues.length ? (
+        <Text style={styles.empty}>No issue trend data available.</Text>
+      ) : (
+        <View style={styles.heatmapList}>
+          {data.issues.map((issue) => (
+            <View key={issue.name} style={styles.heatmapIssueCard}>
+              <View style={styles.heatmapIssueHeader}>
+                <Text numberOfLines={2} style={styles.heatmapIssueName}>{issue.name}</Text>
+                <Text style={styles.heatmapIssueTotal}>{issue.total.toLocaleString()}</Text>
+              </View>
+              <View style={styles.heatmapCells}>
+                {data.months.map((month) => {
+                  const value = issue.values[month] || 0;
+                  const intensity = data.maxValue ? value / data.maxValue : 0;
+                  const alpha = value ? 0.18 + intensity * 0.72 : 0.05;
+                  return (
+                    <View key={`${issue.name}-${month}`} style={[styles.heatmapCell, { backgroundColor: value ? `rgba(215, 255, 0, ${alpha})` : colors.surface.soft }]}>
+                      <Text style={styles.heatmapCellMonth}>{monthLabel(month)}</Text>
+                      <Text style={styles.heatmapCellValue}>{value ? value.toLocaleString() : '—'}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          ))}
+          <Text style={styles.heatmapHint}>Darker lime means a higher issue count for that month. Issues are ordered by overall volume.</Text>
+        </View>
+      )}
+    </View>
+  );
 }
 
 export function LineTrendChart({
@@ -429,4 +612,26 @@ const styles = StyleSheet.create({
   zoomReset: { color: colors.brand.ink, fontSize: 9, fontWeight: '900', textDecorationLine: 'underline' },
   axisRow: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm },
   axisLabel: { color: colors.text.muted, fontSize: 8, fontWeight: '700' },
+
+  monthlyCategoryList: { marginTop: spacing.md, gap: spacing.md },
+  monthlyCategoryCard: { padding: 12, borderRadius: radius.lg, backgroundColor: colors.surface.soft },
+  monthlyCategoryHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  monthlyCategoryMonth: { color: colors.text.primary, fontSize: 12, fontWeight: '900' },
+  monthlyCategoryTotal: { color: colors.text.muted, fontSize: 10, fontWeight: '800' },
+  monthlyStack: { height: 14, marginTop: 10, flexDirection: 'row', overflow: 'hidden', borderRadius: radius.pill, backgroundColor: colors.surface.card },
+  monthlyStackSegment: { minWidth: 2, height: '100%' },
+  monthlyLegendWrap: { marginTop: 10, gap: 7 },
+  monthlyLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  monthlyLegendName: { flex: 1, color: colors.text.secondary, fontSize: 10, fontWeight: '700' },
+  monthlyLegendValue: { color: colors.text.primary, fontSize: 10, fontWeight: '900' },
+  heatmapList: { marginTop: spacing.md, gap: spacing.md },
+  heatmapIssueCard: { padding: 11, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border.soft, backgroundColor: colors.surface.soft },
+  heatmapIssueHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  heatmapIssueName: { flex: 1, color: colors.text.primary, fontSize: 11, fontWeight: '900' },
+  heatmapIssueTotal: { color: colors.brand.ink, fontSize: 12, fontWeight: '900' },
+  heatmapCells: { marginTop: 9, flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  heatmapCell: { width: '31%', minHeight: 56, paddingHorizontal: 7, paddingVertical: 8, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, borderWidth: 1, borderColor: colors.border.soft },
+  heatmapCellMonth: { color: colors.text.muted, fontSize: 8, fontWeight: '800' },
+  heatmapCellValue: { marginTop: 4, color: colors.text.primary, fontSize: 13, fontWeight: '900' },
+  heatmapHint: { color: colors.text.muted, fontSize: 9, lineHeight: 14, fontWeight: '600' },
 });

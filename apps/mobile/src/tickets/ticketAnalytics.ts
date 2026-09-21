@@ -212,12 +212,45 @@ function buildRmaLinkedKpis(ticketRows: NormalizedTicket[], rmaRows: RmaReportRo
     return Boolean(id && ticketIds.has(id));
   });
 
+  const dataRecoveryRmaIds = new Set(
+    matching
+      .filter((row) => {
+        const type = normalizeRmaType(row.rmaType);
+        return type === 'data recovery' || type === 'data recovery rma';
+      })
+      .map((row) => key(cleanText(row.ticketNumber).replace(/\.0+$/, '')))
+      .filter(Boolean),
+  );
+
+  const exactRmaIds = new Set(
+    matching
+      .filter((row) => normalizeRmaType(row.rmaType) === 'rma')
+      .map((row) => key(cleanText(row.ticketNumber).replace(/\.0+$/, '')))
+      .filter(Boolean),
+  );
+
+  const ticketDataRecoveryFallback = new Set(
+    ticketRows
+      .filter((row) => {
+        const id = key(row._ticketNumber);
+        const support = normalizeRmaType(row._supportCategory);
+        return id && (support === 'data recovery' || support === 'data recovery rma') && !dataRecoveryRmaIds.has(id);
+      })
+      .map((row) => key(row._ticketNumber)),
+  );
+
+  const ticketRmaFallback = new Set(
+    ticketRows
+      .filter((row) => {
+        const id = key(row._ticketNumber);
+        return id && normalizeRmaType(row._supportCategory) === 'rma' && !exactRmaIds.has(id);
+      })
+      .map((row) => key(row._ticketNumber)),
+  );
+
   return {
-    dataRecoveryCount: matching.filter((row) => {
-      const type = normalizeRmaType(row.rmaType);
-      return type === 'data recovery' || type === 'data recovery rma';
-    }).length,
-    rmaCount: matching.filter((row) => normalizeRmaType(row.rmaType) === 'rma').length,
+    dataRecoveryCount: dataRecoveryRmaIds.size + ticketDataRecoveryFallback.size,
+    rmaCount: exactRmaIds.size + ticketRmaFallback.size,
   };
 }
 

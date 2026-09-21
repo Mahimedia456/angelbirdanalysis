@@ -18,6 +18,8 @@ export type NormalizedSatisfaction = ReportRow & {
   _reason: string;
   _date: string;
   _dateDisplay: string;
+  _internalNote: string;
+  _externalTeamNote: string;
   _isSolved: boolean;
   _solvedLabel: 'Solved' | 'Not Solved';
 };
@@ -130,6 +132,8 @@ export function normalizeSatisfaction(row: ReportRow): NormalizedSatisfaction {
     _reason: pick(row, ['reason', 'satisfactionReason', 'satisfaction_reason', 'ticket_satisfaction_reason', 'rating_reason']) || 'No reason given',
     _date: date,
     _dateDisplay: pick(row, ['date_display', 'updatedDate', 'updated_date', 'ticket_updated_date', 'date', 'responseDate', 'response_date']) || date,
+    _internalNote: pick(row, ['internalNote', 'internal_note', 'Internal Note', 'internal team note']),
+    _externalTeamNote: pick(row, ['externalTeamNote', 'external_team_note', 'External Team Note', 'external note']),
     _isSolved: isSolved,
     _solvedLabel: isSolved ? 'Solved' : 'Not Solved',
   };
@@ -160,7 +164,7 @@ export function filterSatisfactionRows(rows: NormalizedSatisfaction[], filters: 
   const search = key(filters.search);
   return rows.filter((row) => {
     if (search) {
-      const searchable = [row._ticketNumber, row._rating, row._comment, row._reason].map(key).join(' ');
+      const searchable = [row._ticketNumber, row._rating, row._comment, row._reason, row._internalNote, row._externalTeamNote].map(key).join(' ');
       if (!searchable.includes(search)) return false;
     }
     if (filters.year && row._date.slice(0, 4) !== filters.year) return false;

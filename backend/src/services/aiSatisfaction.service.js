@@ -226,7 +226,7 @@ function normalizeResult(
               )
             )
             .filter(Boolean)
-            .slice(0, 5)
+            .slice(0, 8)
         : [],
   };
 }
@@ -249,9 +249,9 @@ export async function analyzeSatisfactionWithAI(
       model,
 
       instructions: `
-You analyze customer satisfaction feedback for Angelbird technical support operations.
+You analyze customer satisfaction feedback for Angelbird support operations.
 
-Classify which team should primarily review or own the feedback.
+Your job is to produce ONE reconciled operational analysis from ALL context that is actually available for the ticket.
 
 Allowed team values:
 - Support Team
@@ -269,22 +269,31 @@ Classification guidance:
 - Customer Feedback: general praise, thanks, broad satisfaction or dissatisfaction without an identifiable operational owner.
 - Unclear: insufficient evidence.
 
-Use every available source of context, while keeping the sources distinct:
-- Customer feedback/comment
-- Customer reason, if present
-- Internal team note
-- External team note
-- Rating and solved status
+SOURCE ROLES:
+- Customer comment/reason = the customer's experience and perception.
+- Internal team note = Angelbird's internal operational handling/status.
+- External team note = external or cross-team handling/status.
+- Rating and solved status = supporting metadata, not a replacement for the text sources.
 
-If only one source is present, analyze only that source.
-If two or three text sources are present, synthesize them together and note meaningful agreement or conflict.
-Treat customer feedback as the customer's perspective, Internal Note as internal operational context, and External Team Note as third-party/team response context.
-Do not invent facts that are not present in the provided context.
+MANDATORY CONTEXT-COMBINATION RULES:
+1. Use EVERY available text source. Never base the final answer only on the customer comment when an internal or external note is available.
+2. Keep perspectives distinct. Do not rewrite an internal/external note as if the customer said it.
+3. If sources conflict, explicitly reconcile the conflict. Example: customer reports no response while an internal note says the case was forwarded or solved. The analysis must describe this as a communication/status mismatch instead of simply assuming nothing was done.
+4. Operational notes are evidence of internal handling, but they do not invalidate the customer's reported experience.
+5. Do not assume an issue is still unresolved if an internal/external note says it was handled, forwarded, closed, or solved. Instead identify what may still be missing, such as customer-facing communication, confirmation, or closure.
+6. Do not invent missing context. A source marked NOT PROVIDED must be ignored as evidence.
+7. The summary MUST reflect all available text sources and any important agreement/conflict between them.
+8. The explanation MUST explain the classification using the combined context, not just one source.
+9. The recommended action MUST be consistent with both the customer perspective and the latest operational context. Avoid generic actions that contradict an existing internal/external resolution step.
+10. The evidence array MUST include at least one short evidence item from EACH available text source. It may also include rating/solved status when useful.
+11. If customer feedback and internal/external notes describe different states, emphasize the gap between operational handling and customer-visible outcome.
+12. Confidence must be a number from 0 to 1.
 
-The summary must be concise, operational, and represent the combined available context.
-The explanation must state why the selected team was chosen.
-The evidence array must quote or paraphrase only the most relevant short clues from the provided text.
-Confidence must be a number from 0 to 1.
+For a case such as:
+- customer: "There hasn't been a response at all?"
+- internal note: "Forwarded to sales/marketing and submitted as solved"
+the correct synthesis is NOT merely "support failed to respond."
+It should explain that the ticket was internally routed/closed, while the customer still experienced no visible response, indicating a communication or closure-confirmation gap.
       `.trim(),
 
       input: `
@@ -292,17 +301,21 @@ Ticket ID: ${data.ticketId}
 Rating: ${data.rating}
 Solved: ${data.solved ? "Yes" : "No"}
 
+AVAILABLE CONTEXT SOURCES
+
 Customer comment:
-${data.comment}
+${cleanText(input?.comment) || "[NOT PROVIDED]"}
 
 Customer reason:
-${data.reason}
+${cleanText(input?.reason) || "[NOT PROVIDED]"}
 
 Internal team note:
-${data.internalNote}
+${cleanText(input?.internalNote) || "[NOT PROVIDED]"}
 
 External team note:
-${data.externalTeamNote}
+${cleanText(input?.externalTeamNote) || "[NOT PROVIDED]"}
+
+Important: Ignore every [NOT PROVIDED] source. Reconcile every source that contains real text before producing summary, classification explanation, recommended action, and evidence.
       `.trim(),
 
       text: {
@@ -361,7 +374,7 @@ ${data.externalTeamNote}
                   type: "string",
                 },
 
-                maxItems: 5,
+                maxItems: 8,
               },
             },
 

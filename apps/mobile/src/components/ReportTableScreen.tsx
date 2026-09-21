@@ -3,14 +3,18 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   FlatList,
+  Linking,
+  Modal,
   Pressable,
   RefreshControl,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useAuth } from '@/auth/AuthProvider';
 import { useReportData } from '@/reports/ReportDataProvider';
 import {
   EMPTY_TICKET_FILTERS,
@@ -49,11 +53,17 @@ function safeParse<T extends object>(raw: string | string[] | undefined, fallbac
   }
 }
 
+function openZendeskTicket(ticketNumber: string) {
+  const id = String(ticketNumber || '').match(/\d+/)?.[0];
+  if (!id) return;
+  void Linking.openURL(`https://angelbirds.zendesk.com/agent/tickets/${id}`);
+}
+
 function TicketCard({ ticket }: { ticket: NormalizedTicket }) {
   return (
     <View style={styles.recordCard}>
       <View style={styles.recordTop}>
-        <View style={styles.ticketPill}><Text style={styles.ticketNumber}>{ticket._ticketNumber || 'No ticket #'}</Text></View>
+        <Pressable onPress={() => openZendeskTicket(ticket._ticketNumber)} style={styles.ticketPill}><Text style={styles.ticketNumber}>{ticket._ticketNumber || 'No ticket #'}</Text></Pressable>
         <Text style={styles.recordDate}>{ticket._dateDisplay || ticket._date || '-'}</Text>
       </View>
 
@@ -84,7 +94,7 @@ function RmaCard({ row }: { row: NormalizedRma }) {
   return (
     <View style={styles.recordCard}>
       <View style={styles.recordTop}>
-        <View style={styles.ticketPill}><Text style={styles.ticketNumber}>{row._ticketNumber || 'No ticket #'}</Text></View>
+        <Pressable onPress={() => openZendeskTicket(row._ticketNumber)} style={styles.ticketPill}><Text style={styles.ticketNumber}>{row._ticketNumber || 'No ticket #'}</Text></Pressable>
         <Text style={styles.recordDate}>{row._dateDisplay || row._date || '-'}</Text>
       </View>
 
@@ -100,6 +110,16 @@ function RmaCard({ row }: { row: NormalizedRma }) {
 
       <Text style={styles.subject}>{row._subject || 'No ticket subject'}</Text>
 
+      <View style={styles.detailBlock}>
+        <Text style={styles.detailLabel}>ISSUES</Text>
+        <Text style={styles.detailValue}>{row._issue || '-'}</Text>
+      </View>
+
+      <View style={styles.detailBlock}>
+        <Text style={styles.detailLabel}>WARRANTY STATUS</Text>
+        <Text style={styles.detailValue}>{row._warrantyStatus || '-'}</Text>
+      </View>
+
       <View style={styles.typeRow}>
         <Text style={styles.detailLabel}>RMA TYPE</Text>
         <View style={styles.typePill}><Text style={styles.typeText}>{row._rmaType || 'RMA'}</Text></View>
@@ -108,15 +128,25 @@ function RmaCard({ row }: { row: NormalizedRma }) {
   );
 }
 
-function SatisfactionCard({ row, onAnalyze }: { row: NormalizedSatisfaction; onAnalyze: (row: NormalizedSatisfaction) => void }) {
+function SatisfactionCard({
+  row,
+  onAnalyze,
+  onEditNote,
+  editableNotes,
+}: {
+  row: NormalizedSatisfaction;
+  onAnalyze: (row: NormalizedSatisfaction) => void;
+  onEditNote: (row: NormalizedSatisfaction, field: 'internalNote' | 'externalTeamNote') => void;
+  editableNotes: boolean;
+}) {
   const good = row._rating === 'Good';
   const bad = row._rating === 'Bad';
-  const canAnalyze = Boolean(row._comment || (row._reason && row._reason !== 'No reason given'));
+  const canAnalyze = Boolean(row._comment || row._internalNote || row._externalTeamNote || (row._reason && row._reason !== 'No reason given'));
 
   return (
     <View style={styles.recordCard}>
       <View style={styles.recordTop}>
-        <View style={styles.ticketPill}><Text style={styles.ticketNumber}>{row._ticketNumber || 'No ticket #'}</Text></View>
+        <Pressable onPress={() => openZendeskTicket(row._ticketNumber)} style={styles.ticketPill}><Text style={styles.ticketNumber}>{row._ticketNumber || 'No ticket #'}</Text></Pressable>
         <Text style={styles.recordDate}>{row._dateDisplay || row._date || '-'}</Text>
       </View>
 
@@ -132,6 +162,26 @@ function SatisfactionCard({ row, onAnalyze }: { row: NormalizedSatisfaction; onA
         </View>
       </View>
 
+      <View style={styles.noteCard}>
+        <Text style={styles.detailLabel}>INTERNAL NOTE</Text>
+        <Text style={styles.noteText}>{row._internalNote || 'No internal note yet.'}</Text>
+        {editableNotes ? (
+          <Pressable onPress={() => onEditNote(row, 'internalNote')} style={({ pressed }) => [styles.noteButton, pressed && styles.pressed]}>
+            <Text style={styles.noteButtonText}>{row._internalNote ? 'Edit Internal Note' : 'Write Internal Note'}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+
+      <View style={styles.noteCard}>
+        <Text style={styles.detailLabel}>EXTERNAL TEAM NOTE</Text>
+        <Text style={styles.noteText}>{row._externalTeamNote || 'No external team note yet.'}</Text>
+        {editableNotes ? (
+          <Pressable onPress={() => onEditNote(row, 'externalTeamNote')} style={({ pressed }) => [styles.noteButton, pressed && styles.pressed]}>
+            <Text style={styles.noteButtonText}>{row._externalTeamNote ? 'Edit External Team Note' : 'Write External Team Note'}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+
       <Pressable
         accessibilityRole="button"
         disabled={!canAnalyze}
@@ -140,7 +190,7 @@ function SatisfactionCard({ row, onAnalyze }: { row: NormalizedSatisfaction; onA
       >
         <View>
           <Text style={styles.aiButtonTitle}>View AI Summary</Text>
-          <Text style={styles.aiButtonCaption}>Open response analysis</Text>
+          <Text style={styles.aiButtonCaption}>Comment + internal + external context</Text>
         </View>
         <Text style={styles.aiButtonArrow}>›</Text>
       </Pressable>
@@ -148,13 +198,24 @@ function SatisfactionCard({ row, onAnalyze }: { row: NormalizedSatisfaction; onA
   );
 }
 
+type NoteEditorState = {
+  row: NormalizedSatisfaction;
+  field: 'internalNote' | 'externalTeamNote';
+  value: string;
+} | null;
+
 export function ReportTableScreen() {
   const router = useRouter();
+  const { request, user } = useAuth();
   const params = useLocalSearchParams<{ report?: string; filters?: string; ratingView?: string }>();
   const { status, sheet, rma, refresh } = useReportData();
   const [analysisRow, setAnalysisRow] = useState<NormalizedSatisfaction | null>(null);
+  const [noteEditor, setNoteEditor] = useState<NoteEditorState>(null);
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [noteError, setNoteError] = useState<string | null>(null);
 
   const report: ReportType = params.report === 'satisfaction' || params.report === 'rma' ? params.report : 'ticket';
+  const canEditNotes = ['owner', 'admin', 'analyst'].includes(String(user?.role || '').toLowerCase());
   const ratingView: RatingView = params.ratingView === 'Bad' || params.ratingView === 'All' ? params.ratingView : 'Good';
 
   const ticketFilters = useMemo(() => safeParse<TicketFiltersState>(params.filters, EMPTY_TICKET_FILTERS), [params.filters]);
@@ -168,11 +229,33 @@ export function ReportTableScreen() {
   }, [sheet?.satisfaction, satisfactionFilters, ratingView]);
   const rmaRows = useMemo(() => filterRmaRows(normalizeRmaRows(rma?.rows || []), rmaFilters), [rma?.rows, rmaFilters]);
 
+  async function saveNote() {
+    if (!noteEditor) return;
+    setNoteSaving(true);
+    setNoteError(null);
+    try {
+      await request('/sheets/satisfaction/notes', {
+        method: 'PATCH',
+        body: {
+          ticketId: noteEditor.row._ticketNumber,
+          sheetRowNumber: noteEditor.row.sheet_row_number,
+          [noteEditor.field]: noteEditor.value,
+        },
+      });
+      setNoteEditor(null);
+      await refresh('manual');
+    } catch (error) {
+      setNoteError(error instanceof Error ? error.message : 'Unable to save note.');
+    } finally {
+      setNoteSaving(false);
+    }
+  }
+
   const config = report === 'ticket'
     ? { eyebrow: 'TICKET DATA', title: 'Ticket Report Data', caption: 'Ticket # → Date → Region → Subject → Product → Support Category → Product Category.', count: tickets.length }
     : report === 'satisfaction'
-      ? { eyebrow: 'SATISFACTION DATA', title: 'Customer Satisfaction Report Data', caption: `Ticket ID → Date → Comment → Rating → AI Summary · ${ratingView}`, count: satisfaction.length }
-      : { eyebrow: 'RMA DATA', title: 'RMA Report Data', caption: 'Ticket # → Date → Region → Product 1 → Subject → RMA Type.', count: rmaRows.length };
+      ? { eyebrow: 'SATISFACTION DATA', title: 'Customer Satisfaction Report Data', caption: `Ticket ID → Date → Comment → Rating → Internal Note → External Team Note → AI Summary · ${ratingView}`, count: satisfaction.length }
+      : { eyebrow: 'RMA DATA', title: 'RMA Report Data', caption: 'Ticket # → Date → Region → Product 1 → Subject → Issues → Warranty Status → RMA Type.', count: rmaRows.length };
 
   const data = report === 'ticket' ? tickets : report === 'satisfaction' ? satisfaction : rmaRows;
 
@@ -193,7 +276,7 @@ export function ReportTableScreen() {
         renderItem={({ item }: { item: any }) => report === 'ticket'
           ? <TicketCard ticket={item as NormalizedTicket} />
           : report === 'satisfaction'
-            ? <SatisfactionCard row={item as NormalizedSatisfaction} onAnalyze={setAnalysisRow} />
+            ? <SatisfactionCard row={item as NormalizedSatisfaction} onAnalyze={setAnalysisRow} onEditNote={(row, field) => { setNoteError(null); setNoteEditor({ row, field, value: field === 'internalNote' ? row._internalNote : row._externalTeamNote }); }} editableNotes={canEditNotes} />
             : <RmaCard row={item as NormalizedRma} />}
         ListHeaderComponent={(
           <View style={styles.headingCard}>
@@ -213,6 +296,29 @@ export function ReportTableScreen() {
         windowSize={8}
         removeClippedSubviews
       />
+
+      <Modal visible={Boolean(noteEditor)} transparent animationType="fade" onRequestClose={() => setNoteEditor(null)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.noteModal}>
+            <Text style={styles.eyebrow}>{noteEditor?.field === 'internalNote' ? 'INTERNAL NOTE' : 'EXTERNAL TEAM NOTE'}</Text>
+            <Text style={styles.noteModalTitle}>Ticket {noteEditor?.row._ticketNumber || '-'}</Text>
+            <TextInput
+              multiline
+              value={noteEditor?.value || ''}
+              onChangeText={(value) => setNoteEditor((current) => current ? { ...current, value } : current)}
+              placeholder="Write note..."
+              placeholderTextColor={colors.text.muted}
+              style={styles.noteInput}
+              textAlignVertical="top"
+            />
+            {noteError ? <Text style={styles.noteError}>{noteError}</Text> : null}
+            <View style={styles.noteModalActions}>
+              <Pressable disabled={noteSaving} onPress={() => setNoteEditor(null)} style={styles.cancelButton}><Text style={styles.cancelText}>Cancel</Text></Pressable>
+              <Pressable disabled={noteSaving} onPress={() => void saveNote()} style={styles.saveButton}><Text style={styles.saveText}>{noteSaving ? 'Saving…' : 'Save Note'}</Text></Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <SatisfactionAiModal row={analysisRow} onClose={() => setAnalysisRow(null)} />
     </SafeAreaView>
@@ -263,4 +369,18 @@ const styles = StyleSheet.create({
   emptyCard: { marginTop: spacing.md, padding: spacing.xl, alignItems: 'center', gap: spacing.sm, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border.default, backgroundColor: colors.surface.card, ...effects.soft },
   emptyTitle: { color: colors.text.primary, fontSize: 13, fontWeight: '900' },
   emptyText: { color: colors.text.muted, fontSize: 11, fontWeight: '600' },
+  noteCard: { marginTop: 10, padding: 10, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border.default, backgroundColor: colors.surface.soft },
+  noteText: { marginTop: 6, color: colors.text.secondary, fontSize: 11, lineHeight: 17, fontWeight: '600' },
+  noteButton: { alignSelf: 'flex-start', marginTop: 9, paddingHorizontal: 11, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.brand.ink },
+  noteButtonText: { color: colors.text.inverse, fontSize: 9, fontWeight: '900' },
+  modalBackdrop: { flex: 1, padding: spacing.md, justifyContent: 'center', backgroundColor: 'rgba(15,23,42,0.45)' },
+  noteModal: { padding: spacing.lg, borderRadius: radius.xl, backgroundColor: colors.surface.card, ...effects.card },
+  noteModalTitle: { marginTop: 6, color: colors.text.primary, fontSize: 18, fontWeight: '900' },
+  noteInput: { minHeight: 150, marginTop: spacing.md, padding: 12, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border.default, color: colors.text.primary, backgroundColor: colors.surface.soft, fontSize: 12, lineHeight: 18, fontWeight: '600' },
+  noteError: { marginTop: 8, color: '#991B1B', fontSize: 10, lineHeight: 15, fontWeight: '700' },
+  noteModalActions: { marginTop: spacing.md, flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm },
+  cancelButton: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: radius.pill, backgroundColor: colors.surface.soft },
+  cancelText: { color: colors.text.brand, fontSize: 10, fontWeight: '900' },
+  saveButton: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: radius.pill, backgroundColor: colors.brand.accent },
+  saveText: { color: colors.brand.ink, fontSize: 10, fontWeight: '900' },
 });
