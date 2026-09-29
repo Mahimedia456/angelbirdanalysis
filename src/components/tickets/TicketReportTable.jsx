@@ -1,5 +1,12 @@
 import { ArrowDownToLine } from "lucide-react";
+import { useMemo, useState } from "react";
 import { normalizeRegionLabel } from "../../utils/region";
+import SortableTableHeader from "../common/SortableTableHeader";
+import {
+  sortTableRows,
+  toggleSort,
+} from "../../utils/tableSort";
+import ZendeskTicketLink from "../common/ZendeskTicketLink";
 
 function convertToCsv(rows) {
   if (!rows.length) return "";
@@ -41,8 +48,62 @@ export default function TicketReportTable({
   tickets = [],
   preview = false,
 }) {
+  const [sortConfig, setSortConfig] = useState({
+    key: "",
+    direction: "asc",
+  });
+
+  const sortedTickets = useMemo(
+    () =>
+      sortTableRows(
+        tickets,
+        sortConfig,
+        {
+          ticketNumber: {
+            getValue: (ticket) =>
+              ticket.ticket_number ||
+              ticket.ticketNumber ||
+              ticket.ticketId ||
+              ticket.ticket_id,
+            type: "number",
+          },
+          date: {
+            getValue: (ticket) =>
+              ticket.date_display || ticket.date,
+            type: "date",
+          },
+          region: {
+            getValue: (ticket) =>
+              normalizeRegionLabel(ticket.region),
+          },
+          product1: {
+            getValue: (ticket) => ticket.product_1,
+          },
+          supportCategory: {
+            getValue: (ticket) =>
+              ticket.support_category,
+          },
+          productCategory: {
+            getValue: (ticket) =>
+              ticket.product_category,
+          },
+          subject: {
+            getValue: (ticket) =>
+              ticket.ticket_subject,
+          },
+        }
+      ),
+    [tickets, sortConfig]
+  );
+
+  function requestSort(key) {
+    setSortConfig((current) =>
+      toggleSort(current, key)
+    );
+  }
+
   function exportCsv() {
-    const csv = convertToCsv(tickets);
+    const csv = convertToCsv(sortedTickets);
 
     if (!csv) {
       alert("No tickets to export.");
@@ -96,25 +157,67 @@ export default function TicketReportTable({
         <table className="w-full min-w-[1160px] border-collapse text-left text-sm">
           <thead className="bg-slate-50 text-xs uppercase tracking-[0.14em] text-slate-500">
             <tr>
-              <th className="min-w-[130px] px-5 py-4 font-black">Ticket #</th>
-              <th className="min-w-[160px] px-5 py-4 font-black">Date</th>
-              <th className="min-w-[110px] px-5 py-4 font-black">Region</th>
-              <th className="min-w-[240px] px-5 py-4 font-black">Product 1</th>
-              <th className="min-w-[220px] px-5 py-4 font-black">Support Category</th>
-              <th className="min-w-[210px] px-5 py-4 font-black">Product Category</th>
-              <th className="min-w-[360px] px-5 py-4 font-black">Subject</th>
+              <SortableTableHeader
+                label="Ticket #"
+                sortKey="ticketNumber"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+                className="min-w-[130px] px-5 py-4 font-black"
+              />
+              <SortableTableHeader
+                label="Date"
+                sortKey="date"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+                className="min-w-[160px] px-5 py-4 font-black"
+              />
+              <SortableTableHeader
+                label="Region"
+                sortKey="region"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+                className="min-w-[110px] px-5 py-4 font-black"
+              />
+              <SortableTableHeader
+                label="Product 1"
+                sortKey="product1"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+                className="min-w-[240px] px-5 py-4 font-black"
+              />
+              <SortableTableHeader
+                label="Support Category"
+                sortKey="supportCategory"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+                className="min-w-[220px] px-5 py-4 font-black"
+              />
+              <SortableTableHeader
+                label="Product Category"
+                sortKey="productCategory"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+                className="min-w-[210px] px-5 py-4 font-black"
+              />
+              <SortableTableHeader
+                label="Subject"
+                sortKey="subject"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+                className="min-w-[360px] px-5 py-4 font-black"
+              />
             </tr>
           </thead>
 
           <tbody>
             {tickets.length ? (
-              tickets.slice(0, 500).map((ticket, index) => (
+              sortedTickets.slice(0, 500).map((ticket, index) => (
                 <tr
                   key={`${ticket.ticket_number || ticket.date}-${index}`}
                   className="border-t border-slate-100 align-top transition hover:bg-slate-50/70"
                 >
                   <td className="px-5 py-4 font-bold text-slate-900">
-                    {ticket.ticket_number || "-"}
+                    <ZendeskTicketLink value={ticket.ticket_number} />
                   </td>
 
                   <td className="px-5 py-4 text-slate-600">

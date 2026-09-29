@@ -13,6 +13,11 @@ import {
   normalizeRegionLabel,
 } from "../../utils/region";
 import ZendeskTicketLink from "../common/ZendeskTicketLink";
+import SortableTableHeader from "../common/SortableTableHeader";
+import {
+  sortTableRows,
+  toggleSort,
+} from "../../utils/tableSort";
 
 function cleanText(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ");
@@ -142,6 +147,11 @@ export default function RmaReportTable({
     rmaType: "",
   });
 
+  const [sortConfig, setSortConfig] = useState({
+    key: "",
+    direction: "asc",
+  });
+
   const regions = uniqueOptions(
     rows.map((row) => normalizeRegionLabel(row.region)).filter(Boolean)
   );
@@ -149,7 +159,7 @@ export default function RmaReportTable({
   const issues = uniqueOptions(rows.map(getIssue));
   const warrantyStatuses = uniqueOptions(rows.map(getWarrantyStatus));
 
-  const visibleRows = useMemo(() => {
+  const filteredRows = useMemo(() => {
     return rows.filter((row) => {
       const search = normalizeKey(tableFilters.search);
 
@@ -200,6 +210,50 @@ export default function RmaReportTable({
       return true;
     });
   }, [rows, tableFilters]);
+
+  const visibleRows = useMemo(
+    () =>
+      sortTableRows(
+        filteredRows,
+        sortConfig,
+        {
+          ticketNumber: {
+            getValue: (row) => row.ticketNumber,
+            type: "number",
+          },
+          date: {
+            getValue: (row) => row.date,
+            type: "date",
+          },
+          region: {
+            getValue: (row) =>
+              normalizeRegionLabel(row.region),
+          },
+          product1: {
+            getValue: (row) => row.product1,
+          },
+          ticketSubject: {
+            getValue: (row) => row.ticketSubject,
+          },
+          issues: {
+            getValue: getIssue,
+          },
+          warrantyStatus: {
+            getValue: getWarrantyStatus,
+          },
+          rmaType: {
+            getValue: (row) => row.rmaType,
+          },
+        }
+      ),
+    [filteredRows, sortConfig]
+  );
+
+  function requestSort(key) {
+    setSortConfig((current) =>
+      toggleSort(current, key)
+    );
+  }
 
   function updateFilter(key, value) {
     setTableFilters((current) => ({
@@ -374,14 +428,62 @@ export default function RmaReportTable({
         <table className="w-full table-fixed border-collapse text-left text-[12px] xl:text-[13px]">
           <thead className="bg-slate-50 text-[10px] uppercase tracking-[0.12em] text-slate-500 xl:text-xs">
             <tr>
-              <th className="w-[7%] px-2.5 py-4 font-black">Ticket #</th>
-              <th className="w-[8%] px-2.5 py-4 font-black">Date</th>
-              <th className="w-[7%] px-2.5 py-4 font-black">Region</th>
-              <th className="w-[16%] px-2.5 py-4 font-black">Product 1</th>
-              <th className="w-[18%] px-2.5 py-4 font-black">Subject</th>
-              <th className="w-[17%] px-2.5 py-4 font-black">Issues</th>
-              <th className="w-[14%] px-2.5 py-4 font-black">Warranty Status</th>
-              <th className="w-[13%] px-2.5 py-4 font-black">RMA Type</th>
+              <SortableTableHeader
+                label="Ticket #"
+                sortKey="ticketNumber"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+                className="w-[7%] px-2.5 py-4 font-black"
+              />
+              <SortableTableHeader
+                label="Date"
+                sortKey="date"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+                className="w-[8%] px-2.5 py-4 font-black"
+              />
+              <SortableTableHeader
+                label="Region"
+                sortKey="region"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+                className="w-[7%] px-2.5 py-4 font-black"
+              />
+              <SortableTableHeader
+                label="Product 1"
+                sortKey="product1"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+                className="w-[16%] px-2.5 py-4 font-black"
+              />
+              <SortableTableHeader
+                label="Subject"
+                sortKey="ticketSubject"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+                className="w-[18%] px-2.5 py-4 font-black"
+              />
+              <SortableTableHeader
+                label="Issues"
+                sortKey="issues"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+                className="w-[17%] px-2.5 py-4 font-black"
+              />
+              <SortableTableHeader
+                label="Warranty Status"
+                sortKey="warrantyStatus"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+                className="w-[14%] px-2.5 py-4 font-black"
+              />
+              <SortableTableHeader
+                label="RMA Type"
+                sortKey="rmaType"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+                className="w-[13%] px-2.5 py-4 font-black"
+              />
             </tr>
           </thead>
 

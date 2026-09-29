@@ -21,6 +21,11 @@ import { useAuth } from "../../context/AuthContext";
 import { analyzeSatisfactionResponse } from "../../services/aiSatisfactionApi";
 import { updateSatisfactionNotes } from "../../services/sheetReportsApi";
 import ZendeskTicketLink from "../common/ZendeskTicketLink";
+import SortableTableHeader from "../common/SortableTableHeader";
+import {
+  sortTableRows,
+  toggleSort,
+} from "../../utils/tableSort";
 
 function normalizeRating(value) {
   const rating = String(value || "Unknown")
@@ -603,6 +608,10 @@ export default function SatisfactionReportTable({
   const [editingNote, setEditingNote] = useState(null);
   const [ratingView, setRatingView] = useState("Good");
   const [rowOverrides, setRowOverrides] = useState({});
+  const [sortConfig, setSortConfig] = useState({
+    key: "",
+    direction: "asc",
+  });
 
   const normalizedRows = useMemo(
     () =>
@@ -620,13 +629,61 @@ export default function SatisfactionReportTable({
     [rows, rowOverrides]
   );
 
-  const visibleRows = useMemo(() => {
+  const filteredRows = useMemo(() => {
     if (ratingView === "All") return normalizedRows;
 
     return normalizedRows.filter(
       (row) => row.normalizedRating === ratingView
     );
   }, [normalizedRows, ratingView]);
+
+  const visibleRows = useMemo(
+    () =>
+      sortTableRows(
+        filteredRows,
+        sortConfig,
+        {
+          ticketId: {
+            getValue: getTicketId,
+            type: "number",
+          },
+          date: {
+            getValue: getUpdatedDate,
+            type: "date",
+          },
+          comment: {
+            getValue: getComment,
+          },
+          rating: {
+            getValue: (row) => row.normalizedRating,
+          },
+          internalNote: {
+            getValue: getInternalNote,
+          },
+          externalTeamNote: {
+            getValue: getExternalTeamNote,
+          },
+          aiSummary: {
+            getValue: (row) =>
+              Boolean(
+                getComment(row) ||
+                  getReason(row) ||
+                  getInternalNote(row) ||
+                  getExternalTeamNote(row)
+              )
+                ? "Available"
+                : "Unavailable",
+          },
+        }
+      ),
+    [filteredRows, sortConfig]
+  );
+
+  function requestSort(key) {
+    setSortConfig((current) =>
+      toggleSort(current, key)
+    );
+  }
 
   async function handleSavedNote(row, field, value) {
     const patch =
@@ -709,14 +766,56 @@ export default function SatisfactionReportTable({
           <table className="w-full table-fixed border-collapse text-left text-[13px] xl:text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-[0.14em] text-slate-500">
               <tr>
-                <th className="w-[7%] px-2.5 py-4 font-black xl:px-3">Ticket ID</th>
-                <th className="w-[8%] px-2.5 py-4 font-black xl:px-3">Date</th>
-                <th className="w-[27%] px-3 py-4 font-black">Comment</th>
-                <th className="w-[7%] px-2.5 py-4 font-black xl:px-3">Rating</th>
-                <th className="w-[19%] px-3 py-4 font-black">Internal Note</th>
-                <th className="w-[19%] px-3 py-4 font-black">External Team Note</th>
+                <SortableTableHeader
+                  label="Ticket ID"
+                  sortKey="ticketId"
+                  sortConfig={sortConfig}
+                  onSort={requestSort}
+                  className="w-[7%] px-2.5 py-4 font-black xl:px-3"
+                />
+                <SortableTableHeader
+                  label="Date"
+                  sortKey="date"
+                  sortConfig={sortConfig}
+                  onSort={requestSort}
+                  className="w-[8%] px-2.5 py-4 font-black xl:px-3"
+                />
+                <SortableTableHeader
+                  label="Comment"
+                  sortKey="comment"
+                  sortConfig={sortConfig}
+                  onSort={requestSort}
+                  className="w-[27%] px-3 py-4 font-black"
+                />
+                <SortableTableHeader
+                  label="Rating"
+                  sortKey="rating"
+                  sortConfig={sortConfig}
+                  onSort={requestSort}
+                  className="w-[7%] px-2.5 py-4 font-black xl:px-3"
+                />
+                <SortableTableHeader
+                  label="Internal Note"
+                  sortKey="internalNote"
+                  sortConfig={sortConfig}
+                  onSort={requestSort}
+                  className="w-[19%] px-3 py-4 font-black"
+                />
+                <SortableTableHeader
+                  label="External Team Note"
+                  sortKey="externalTeamNote"
+                  sortConfig={sortConfig}
+                  onSort={requestSort}
+                  className="w-[19%] px-3 py-4 font-black"
+                />
                 {!preview ? (
-                  <th className="w-[13%] px-3 py-4 font-black">AI Summary</th>
+                  <SortableTableHeader
+                    label="AI Summary"
+                    sortKey="aiSummary"
+                    sortConfig={sortConfig}
+                    onSort={requestSort}
+                    className="w-[13%] px-3 py-4 font-black"
+                  />
                 ) : null}
               </tr>
             </thead>

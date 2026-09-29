@@ -29,6 +29,7 @@ import TicketKpiCards from "../components/tickets/TicketKpiCards";
 import ChartPanel from "../components/dashboard/ChartPanel";
 import ExportActions from "../components/export/ExportActions";
 import ZendeskTicketLink from "../components/common/ZendeskTicketLink";
+import SortableTableHeader from "../components/common/SortableTableHeader";
 
 import SatisfactionFilters from "../components/satisfaction/SatisfactionFilters";
 import SatisfactionKpiCards from "../components/satisfaction/SatisfactionKpiCards";
@@ -64,6 +65,10 @@ import {
   normalizeRegionKey,
   normalizeRegionLabel,
 } from "../utils/region";
+import {
+  sortTableRows,
+  toggleSort,
+} from "../utils/tableSort";
 
 function cleanText(value) {
   return String(value ?? "")
@@ -794,6 +799,10 @@ function TicketTabbedTable({
 }) {
   const [activeTab, setActiveTab] = useState("all");
   const [selectedValue, setSelectedValue] = useState("");
+  const [sortConfig, setSortConfig] = useState({
+    key: "",
+    direction: "asc",
+  });
 
   const tabConfig = {
     all: {
@@ -897,6 +906,74 @@ function TicketTabbedTable({
     currentConfig.keys,
   ]);
 
+  const sortedTickets = useMemo(
+    () =>
+      sortTableRows(
+        visibleTickets,
+        sortConfig,
+        {
+          ticketNumber: {
+            getValue: (ticket) =>
+              ticket.ticketNumber ||
+              ticket.ticket_number ||
+              ticket.ticketNo ||
+              ticket.ticketId ||
+              ticket.ticket_id,
+            type: "number",
+          },
+          date: {
+            getValue: (ticket) => getTicketDate(ticket),
+            type: "date",
+          },
+          region: {
+            getValue: (ticket) =>
+              normalizeRegionLabel(ticket.region),
+          },
+          subject: {
+            getValue: (ticket) =>
+              cleanText(
+                ticket.ticketSubject ||
+                  ticket.ticket_subject ||
+                  ticket.subject
+              ),
+          },
+          product: {
+            getValue: (ticket) =>
+              cleanText(
+                ticket.product ||
+                  ticket.productName ||
+                  ticket.product_name ||
+                  ticket.product1 ||
+                  ticket.product_1 ||
+                  ticket.products
+              ),
+          },
+          supportCategory: {
+            getValue: (ticket) =>
+              normalizeDisplayLabel(
+                ticket.supportCategory ||
+                  ticket.support_category ||
+                  ticket.category
+              ),
+          },
+          productCategory: {
+            getValue: (ticket) =>
+              cleanText(
+                ticket.productCategory ||
+                  ticket.product_category
+              ),
+          },
+        }
+      ),
+    [visibleTickets, sortConfig]
+  );
+
+  function requestTicketSort(key) {
+    setSortConfig((current) =>
+      toggleSort(current, key)
+    );
+  }
+
   function changeTab(tabKey) {
     setActiveTab(tabKey);
     setSelectedValue("");
@@ -924,7 +1001,7 @@ function TicketTabbedTable({
             type="button"
             onClick={() =>
               exportTicketExcel({
-                rows: visibleTickets,
+                rows: sortedTickets,
                 tableMode: activeTab,
               })
             }
@@ -996,13 +1073,55 @@ function TicketTabbedTable({
         <table className="min-w-full text-left text-sm">
           <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
             <tr>
-              <th className="px-4 py-3">Ticket #</th>
-              <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Region</th>
-              <th className="px-4 py-3">Subject</th>
-              <th className="px-4 py-3">Product</th>
-              <th className="px-4 py-3">Support Category</th>
-              <th className="px-4 py-3">Product Category</th>
+              <SortableTableHeader
+                label="Ticket #"
+                sortKey="ticketNumber"
+                sortConfig={sortConfig}
+                onSort={requestTicketSort}
+                className="px-4 py-3"
+              />
+              <SortableTableHeader
+                label="Date"
+                sortKey="date"
+                sortConfig={sortConfig}
+                onSort={requestTicketSort}
+                className="px-4 py-3"
+              />
+              <SortableTableHeader
+                label="Region"
+                sortKey="region"
+                sortConfig={sortConfig}
+                onSort={requestTicketSort}
+                className="px-4 py-3"
+              />
+              <SortableTableHeader
+                label="Subject"
+                sortKey="subject"
+                sortConfig={sortConfig}
+                onSort={requestTicketSort}
+                className="px-4 py-3"
+              />
+              <SortableTableHeader
+                label="Product"
+                sortKey="product"
+                sortConfig={sortConfig}
+                onSort={requestTicketSort}
+                className="px-4 py-3"
+              />
+              <SortableTableHeader
+                label="Support Category"
+                sortKey="supportCategory"
+                sortConfig={sortConfig}
+                onSort={requestTicketSort}
+                className="px-4 py-3"
+              />
+              <SortableTableHeader
+                label="Product Category"
+                sortKey="productCategory"
+                sortConfig={sortConfig}
+                onSort={requestTicketSort}
+                className="px-4 py-3"
+              />
             </tr>
           </thead>
 
@@ -1018,7 +1137,7 @@ function TicketTabbedTable({
               </tr>
             ) : null}
 
-            {visibleTickets.map((ticket, index) => (
+            {sortedTickets.map((ticket, index) => (
               <tr
                 key={getTicketIdentity(ticket) || ticket.id || index}
                 className="text-slate-700 transition hover:bg-slate-50"
